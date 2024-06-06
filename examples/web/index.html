@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test_webgl_webgpu</title>
+    <style>
+        html, body, #engine-container {
+            /* width: 100%;
+            height: 100%; */
+            width: 540px;
+            height: 450px;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="engine-container"></div>
+
+    <script>
+        var slowDown = function() {
+            let count = 0;
+            setInterval(() => {
+                for (var index = 0; index < 100000000; index++) {
+                    count += Math.cos(Math.sin(Math.random()));
+                }
+            }, 1);    
+        }
+    </script>
+
+    <!-- 使用外部（js中）创建canvas和Module的方式时，“customCanvas”参数必须为true -->
+    <!-- <script type="module">
+        import EngineCore from './lib/EngineCore.js'
+
+        const canvasId = "ry-dxasf-0ddas-main-canvas";
+
+        const Module = {
+            canvas: (() => {
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+                canvas.style.cssText = `
+                    width: 400px;
+                    height: 300px;
+                    margin: 0;
+                    padding: 0;
+                `;
+                canvas.addEventListener("webglcontextlost", (e) => { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+                document.getElementById("engine-container").appendChild(canvas);
+                return canvas;
+            })(),
+        }
+
+        EngineCore(Module).then(engine => {
+            engine.startEngine({
+                containerId: "engine-container",
+                width: 400,
+                height: 300,
+                backend: "webgpu",  // Valid values: webgl2 or webgpu
+                usingOffscreenCanvas: false,
+                canvasId: canvasId, // Why??? Except for the value "canvas", all other values do not work
+                customCanvas: true,
+                style: ""   // A css text, it is only working when "customCanvas" is set to true
+            });
+        });
+    </script> -->
+
+    <!-- 使用WASM内部创建canvas和Module的方式 -->
+    <script type="module">
+        import EngineCore from './lib/iEngineCore.js'
+
+        EngineCore().then(module => {
+            console.log(module)
+
+            const container = document.getElementById('engine-container');
+            const engine = new module.Engine({
+                containerId: "engine-container",
+                width: container.clientWidth,
+                height: container.clientHeight,
+                // backend: "webgpu",  // Valid values: webgl2 or webgpu
+                // usingOffscreenCanvas: false,
+                canvasId: 'xr-main-canvas-0x000001',
+                // customCanvas: false,
+                style: ""   // A css text, it is only working when "customCanvas" is set to false
+            });
+
+            const perspectiveCamera = new module.PerspectiveCamera(container.clientWidth / container.clientHeight);
+
+            const mesh = new module.Mesh(
+                new Float32Array([
+                        // position             // normal        // color
+                        -0.5, -0.5, 0.0,     0.0, 0.0, 1.0,    1.0, 0.0, 0.0,
+                         0.5, -0.5, 1.0,     0.0, 0.0, 1.0,    0.0, 1.0, 0.0,
+                         0.0,  0.5, 0.0,     0.0, 0.0, 1.0,    0.0, 0.0, 1.0,
+                ]), 
+                new Uint32Array([0, 1, 2]),
+                [
+                    {
+                        location: 0,
+                        format: 'float32x3',
+                        offset: 0,
+                    },
+                    {
+                        location: 1,
+                        format: 'float32x3',
+                        offset: 12,
+                    },
+                    {
+                        location: 2,
+                        format: 'float32x3',
+                        offset: 24,
+                    }
+                ]
+            )
+
+            const scene = new module.Scene(960, 640, perspectiveCamera);
+
+            // scene.addCamera(perspectiveCamera);
+
+            scene.addMesh(mesh);
+
+            engine.addScene(scene, true);
+
+            //
+            setTimeout(() => {
+                perspectiveCamera.delete();
+                mesh.delete();
+                scene.delete();
+                engine.delete();
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
