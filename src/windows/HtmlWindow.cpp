@@ -11,16 +11,11 @@
 #include <vector>
 #include <memory>
 
-static bool g_Active = false;
+// static bool g_Active = false;
 
 HtmlWindow::HtmlWindow(const WindowProps& props)
 	: m_Scene(nullptr), m_Width(props.Width), m_Height(props.Height), m_CanvasId(props.CanvasId), m_ShouleClose(false), m_SwapchainUpdated(true)
 {
-    // std::cout << props.ContainerId << std::endl;
-    // std::cout << props.CanvasId  << std::endl;
-    // std::cout << props.Style << std::endl;
-
-    //
     CreateCanvas(props.ContainerId, props.CanvasId, props.Style);
 }
 
@@ -68,38 +63,45 @@ void HtmlWindow::RegisterEvent()
     const char* canvasIdWithSelector = std::string("#").append(m_CanvasId).c_str();
 
     // 关于事件的定义：https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/html5.h
-    EMSCRIPTEN_RESULT ret;
+    // EMSCRIPTEN_RESULT ret;
 
-    ret = emscripten_set_click_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseClick(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret1 = emscripten_set_click_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseClick(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_dblclick_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseDbClick(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret2 = emscripten_set_dblclick_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseDbClick(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_mousedown_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseDown(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret3 = emscripten_set_mousedown_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseDown(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_mouseup_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseUp(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret4 = emscripten_set_mouseup_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseUp(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_mousemove_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseMove(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret5 = emscripten_set_mousemove_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenMouseEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseMove(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_wheel_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenWheelEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnMouseWheel(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret6 = emscripten_set_wheel_callback(canvasIdWithSelector, this, true, [](int eventType, const EmscriptenWheelEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnMouseWheel(eventType, e/*, userData*/);
     });
 
-    ret = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, true, [](int eventType, const EmscriptenUiEvent *e, void *userData) -> EM_BOOL {
-        return static_cast<HtmlWindow*>(userData)->OnResize(eventType, e, userData);
+    EMSCRIPTEN_RESULT ret7 = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, true, [](int eventType, const EmscriptenUiEvent *e, void *userData) -> EM_BOOL {
+        auto that = static_cast<HtmlWindow*>(userData);
+        return that->OnResize(eventType, e/*, userData*/);
     });
 }
 
-EM_BOOL HtmlWindow::OnMouseClick(int eventType, const EmscriptenMouseEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/)
 {
     if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000)
     {
@@ -117,7 +119,7 @@ EM_BOOL HtmlWindow::OnMouseClick(int eventType, const EmscriptenMouseEvent *e, v
     return 0;
 }
 
-EM_BOOL HtmlWindow::OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/)
 {
     std::cout << "Processing mouse double click event" << std::endl;
     std::cout << "screenX:" << e->screenX << std::endl;
@@ -130,10 +132,10 @@ EM_BOOL HtmlWindow::OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e,
     return 0;
 }
 
-EM_BOOL HtmlWindow::OnMouseDown(int eventType, const EmscriptenMouseEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseDown(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/)
 {
     m_DragState.active = true;
-    g_Active = true;
+    // g_Active = true;
     std::cout << "Processing mouse down event" << std::endl;
     std::cout << "screenX:" << e->screenX << std::endl;
     std::cout << "screenY:" << e->screenY << std::endl;
@@ -145,10 +147,10 @@ EM_BOOL HtmlWindow::OnMouseDown(int eventType, const EmscriptenMouseEvent *e, vo
     return 0;
 }
 
-EM_BOOL HtmlWindow::OnMouseUp(int eventType, const EmscriptenMouseEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseUp(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/)
 {
     m_DragState.active = false;
-    g_Active = false;
+    // g_Active = false;
     std::cout << "Processing mouse up event" << std::endl;
     std::cout << "screenX:" << e->screenX << std::endl;
     std::cout << "screenY:" << e->screenY << std::endl;
@@ -160,12 +162,12 @@ EM_BOOL HtmlWindow::OnMouseUp(int eventType, const EmscriptenMouseEvent *e, void
     return 0;
 }
 
-EM_BOOL HtmlWindow::OnMouseMove(int eventType, const EmscriptenMouseEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseMove(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/)
 {
     if (m_Scene == nullptr) return false;
 
-    // if (m_DragState.active)  // not working
-    if (g_Active)
+    if (m_DragState.active)  // not working
+    // if (g_Active)
     {
         std::cout << "Processing mouse move event" << std::endl;
         std::cout << "screenX:" << e->screenX << std::endl;
@@ -200,7 +202,7 @@ EM_BOOL HtmlWindow::OnMouseMove(int eventType, const EmscriptenMouseEvent *e, vo
     return true;
 }
 
-EM_BOOL HtmlWindow::OnMouseWheel(int eventType, const EmscriptenWheelEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnMouseWheel(int eventType, const EmscriptenWheelEvent *e/*, void *userData*/)
 {
     std::cout << "Processing mouse wheel event" << std::endl;
     std::cout << "deltaX:" << e->deltaX << std::endl;
@@ -218,7 +220,7 @@ EM_BOOL HtmlWindow::OnMouseWheel(int eventType, const EmscriptenWheelEvent *e, v
     return true;
 }
 
-EM_BOOL HtmlWindow::OnResize(int eventType, const EmscriptenUiEvent *e, void *userData)
+EM_BOOL HtmlWindow::OnResize(int eventType, const EmscriptenUiEvent *e/*, void *userData*/)
 {
     int width = (int) e->windowInnerWidth;
     int height = (int) e->windowInnerHeight;
