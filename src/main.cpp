@@ -45,7 +45,7 @@
             .field("width", &EngineInitOpts::width)
             .field("height", &EngineInitOpts::height)
             // .field("backend", &EngineInitOpts::backend)
-            // .field("usingOffscreenCanvas", &EngineInitOpts::usingOffscreenCanvas)
+            .field("usingOffscreenCanvas", &EngineInitOpts::usingOffscreenCanvas)
             // .field("customCanvas", &EngineInitOpts::customCanvas)
             .field("canvasId", &EngineInitOpts::canvasId)
             .field("style", &EngineInitOpts::style)

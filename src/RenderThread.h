@@ -12,11 +12,6 @@
 #include <atomic>
 
 
-// void RenderLoopCallback(void* arg)
-// {
-//     static_cast<RenderThread*>(arg)->OnFrame();
-// }
-
 class RenderThread {
 public:
     RenderThread(const std::unique_ptr<Window>& window);
@@ -26,27 +21,16 @@ public:
 public:
     bool IsRunning() const { return m_IsRunning; }
 
-    void Start();
-
-    void SetScene(const std::shared_ptr<Scene>& scene) { m_Scene = scene.get(); }
-
-    // friend void RenderLoopCallback(void* arg); // 友元函数声明
-
-private:
-    void OnFrame();
-    
-    /// 渲染线程主函数
-    void RenderMain();
+    void Start(void*(*fn)(void*), void* userData = nullptr);
 
 private:
     Window* m_Window;
 
-    Scene* m_Scene;
-
+    //渲染线程
 #if defined(IE_WGPU_NATIVE)
-    std::thread m_RenderThread; //渲染线程
+    std::thread m_RenderThread;
 #elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)
-    pthread_t m_RenderThread;   //渲染线程
+    pthread_t m_RenderThread;
 #endif
 
     std::atomic<bool> m_IsRunning;

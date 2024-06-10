@@ -31,19 +31,19 @@ public:
 
     void RegisterEvent();
 
-    EM_BOOL OnMouseClick(int eventType, const EmscriptenMouseEvent *e, void *userData) override;
+    EM_BOOL OnMouseClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e, void *userData) override;
+    EM_BOOL OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnMouseDown(int eventType, const EmscriptenMouseEvent *e, void *userData) override;
+    EM_BOOL OnMouseDown(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnMouseUp(int eventType, const EmscriptenMouseEvent *e, void *userData) override;
+    EM_BOOL OnMouseUp(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnMouseMove(int eventType, const EmscriptenMouseEvent *e, void *userData) override;
+    EM_BOOL OnMouseMove(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnMouseWheel(int eventType, const EmscriptenWheelEvent *e, void *userData) override;
+    EM_BOOL OnMouseWheel(int eventType, const EmscriptenWheelEvent *e/*, void *userData*/) override;
 
-    EM_BOOL OnResize(int eventType, const EmscriptenUiEvent *e, void *userData) override;
+    EM_BOOL OnResize(int eventType, const EmscriptenUiEvent *e/*, void *userData*/) override;
 
     inline const char* emscripten_event_type_to_string(int eventType);
 

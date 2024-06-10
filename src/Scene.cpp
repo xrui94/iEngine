@@ -17,29 +17,6 @@ Scene::~Scene()
     Clear();
 }
 
-void Scene::Clear()
-{
-    m_Camera->Destroy();
-
-    for (auto& mesh : m_Meshes)
-    {
-        if (!mesh->IsPrepared())
-        {
-            mesh->Destroy();
-        }
-    }
-
-    m_Meshes.clear();
-}
-
-void Scene::Resize(uint32_t width, uint32_t height)
-{
-    // 当窗口宽和高为0时，则不再响应resize事件，否则，创建SwapChain时，程序将崩溃
-    if (width == 0 || height == 0) return;
-
-    m_Renderer->Resize(width, height);
-}
-
 void Scene::AddMesh(std::shared_ptr<Mesh> mesh)
 {
     m_Meshes.push_back(mesh);
@@ -86,7 +63,6 @@ void Scene::Render()
             mesh->SendToBuffer();
         }
 
-        std::cout << "do mesh rendering..." << std::endl;
         m_Renderer->Render(frame.value(), mesh);
     }
 
@@ -102,6 +78,49 @@ void Scene::RenderOnce()
 }
 
 void Scene::RenderLoop()
+{
+
+}
+
+void Scene::Clear()
+{
+    m_Camera->Destroy();
+
+    for (auto& mesh : m_Meshes)
+    {
+        if (!mesh->IsPrepared())
+        {
+            mesh->Destroy();
+        }
+    }
+
+    m_Meshes.clear();
+}
+
+void Scene::Resize(uint32_t width, uint32_t height)
+{
+    // 当窗口宽和高为0时，则不再响应resize事件，否则，创建SwapChain时，程序将崩溃
+    if (width == 0 || height == 0) return;
+
+    m_Renderer->Resize(width, height);
+}
+
+void Scene::Rotate()
+{
+
+}
+
+void Scene::Translate()
+{
+
+}
+
+void Scene::Zoom()
+{
+
+}
+
+void Scene::Pickup()
 {
 
 }

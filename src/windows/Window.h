@@ -72,19 +72,19 @@ public:
 
 #elif defined(IE_WGPU_EMSCRIPTEN) || defined(IE_ONLY_EMSCRIPTEN)
 
-    virtual EM_BOOL OnMouseClick(int eventType, const EmscriptenMouseEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseDbClick(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnMouseDown(int eventType, const EmscriptenMouseEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseDown(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnMouseUp(int eventType, const EmscriptenMouseEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseUp(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnMouseMove(int eventType, const EmscriptenMouseEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseMove(int eventType, const EmscriptenMouseEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnMouseWheel(int eventType, const EmscriptenWheelEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnMouseWheel(int eventType, const EmscriptenWheelEvent *e/*, void *userData*/) = 0;
 
-    virtual EM_BOOL OnResize(int eventType, const EmscriptenUiEvent *e, void *userData) = 0;
+    virtual EM_BOOL OnResize(int eventType, const EmscriptenUiEvent *e/*, void *userData*/) = 0;
 
 #endif
 
