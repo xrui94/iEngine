@@ -45,6 +45,8 @@ public:
 
     std::unique_ptr<Window>& GetWindow() { return m_Window; }
 
+    // friend void RenderLoopCallback(void* arg); // 友元函数声明
+
     void AddScene(std::shared_ptr<Scene> scene, bool active = true);
 
     void ActiveScene(const std::string& id);

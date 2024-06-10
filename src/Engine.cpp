@@ -9,6 +9,11 @@
 #include <iostream>
 
 
+// void RenderLoopCallback(void* arg)
+// {
+//     static_cast<RenderThread*>(arg)->OnFrame();
+// }
+
 // 静态成员变量在类中仅仅是声明，没有定义，
 // 所以要在类的外面定义，实际上是给静态成员变量分配内存
 // 否则，将会在程序链接的时候，报“error LNK2019”的错误
@@ -131,7 +136,7 @@ void Engine::Render()
     {
         // if (webGPUDevice.IsInitialized())
         // {
-                engine->OnFrame();
+                OnFrame();
         // }
     }
 
@@ -176,11 +181,10 @@ void Engine::AddScene(std::shared_ptr<Scene> scene, bool active)
         if (m_InitOpts.usingOffscreenCanvas) {
             // 创建渲染线程
             // m_RenderThread = std::make_unique<RenderThread>(m_Window);
-            m_RenderThread->Start([](void* arg) -> void* {
+            m_RenderThread->Start([](void*) -> void* {
                 Engine::Get().Render();
                 return nullptr;
             });
-            m_RenderThread->SetScene(m_SceneMap[id]);
         }
         else {
             Render();
@@ -218,7 +222,6 @@ void Engine::ActiveScene(const std::string& id)
 
         // 创建渲染线程
         // m_RenderThread = std::make_unique<RenderThread>(m_Window);
-        // m_RenderThread->SetScene(m_Scene);
 
         //
         Run();
