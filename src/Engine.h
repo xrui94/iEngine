@@ -2,6 +2,7 @@
 
 #include "windows/Window.h"
 #include "RenderThread.h"
+#include "Scene.h"
 
 #include <string>
 #include <unordered_map>
@@ -20,13 +21,13 @@ struct EngineInitOpts
     uint32_t width;
     uint32_t height;
     // std::string backend = "webgpu";
-    // bool usingOffscreenCanvas = true;
+    bool usingOffscreenCanvas = true;
     // bool customCanvas = false;
     std::string canvasId = "#xr-main-canvas";
     std::string style = "";
 };
 
-class Scene;
+// class Scene;
 
 class Engine
 {
@@ -49,16 +50,24 @@ public:
     void ActiveScene(const std::string& id);
 
 private:
+    void OnFrame();
+
+    void Render();
+
     void Run();
 
 private:
     static Engine* s_Instance;
+
+    EngineInitOpts m_InitOpts;
 
     bool m_IsRunning;
 
     std::unique_ptr<Window> m_Window;
 
     std::unique_ptr<RenderThread> m_RenderThread;
+
+    std::shared_ptr<Scene> m_Scene;
 
     std::unordered_map<std::string, std::shared_ptr<Scene>> m_SceneMap;
 };

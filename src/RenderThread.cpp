@@ -47,7 +47,7 @@ private:
 static InitArgs initArgs{};
 
 RenderThread::RenderThread(const std::unique_ptr<Window>& window)
-    : m_Window(window.get()), m_Scene(nullptr), m_IsRunning(true)
+    : m_Window(window.get()), m_Scene(nullptr), m_IsRunning(false)
 {
 // #if defined(IE_WGPU_NATIVE)
 //     m_RenderThread = std::thread(&RenderThread::RenderMain, this);	//创建渲染线程，并指定渲染函数入口。
@@ -117,7 +117,7 @@ RenderThread::~RenderThread()
 #endif
 }
 
-void RenderThread::Start()
+void RenderThread::Start(void*(*fn)(void*), void* userData)
 {
 #if defined(IE_WGPU_NATIVE)
     m_RenderThread = std::thread(&RenderThread::RenderMain, this);	//创建渲染线程，并指定渲染函数入口。
@@ -140,19 +140,20 @@ void RenderThread::Start()
     emscripten_pthread_attr_settransferredcanvases(&attr, canvasId.c_str());
 
     // Test01: WebGPURenderer(Use the engine architecture in this project) with the arch of (working!)
-    pthread_create(&m_RenderThread, &attr, [](void* arg) -> void* {
-        RenderThread* renderThread = static_cast<RenderThread*>(arg);  
-        try
-        {
-            // 调用成员函数
-            renderThread->RenderMain();  
-        }
-        catch (ThreadException &e)
-        {
-            std::cout << "Catched the exception of rendering thread:" << e.what() << std::endl;
-        }
-        return nullptr;  
-    }, (void*)this);
+    // pthread_create(&m_RenderThread, &attr, [](void* arg) -> void* {
+    //     RenderThread* renderThread = static_cast<RenderThread*>(arg);  
+    //     try
+    //     {
+    //         // 调用成员函数
+    //         renderThread->RenderMain();  
+    //     }
+    //     catch (ThreadException &e)
+    //     {
+    //         std::cout << "Catched the exception of rendering thread:" << e.what() << std::endl;
+    //     }
+    //     return nullptr;  
+    // }, (void*)this);
+    pthread_create(&m_RenderThread, &attr, fn, userData);
 
 
     // Test02: OpenGLRenderer (working!)
@@ -188,62 +189,62 @@ void RenderThread::OnFrame()
     m_Window->SetSwapchainState(false);
 }
 
-void RenderThread::RenderMain()
-{
-    std::cout << "Start sub thread for rendering, init..." << std::endl;
+// void RenderThread::RenderMain()
+// {
+//     std::cout << "Start sub thread for rendering, init..." << std::endl;
 
-	// 在调用栈上，实例化一个OpenGL上下文对象
-  	// // 在调用栈上，实例化一个WebGPU设备对象
-    // // 渲染相关的API调用需要放到渲染线程中。
-    // glfwMakeContextCurrent(m_Window);
+// 	// 在调用栈上，实例化一个OpenGL上下文对象
+//   	// // 在调用栈上，实例化一个WebGPU设备对象
+//     // // 渲染相关的API调用需要放到渲染线程中。
+//     // glfwMakeContextCurrent(m_Window);
 
-    // // gladLoadGL(glfwGetProcAddress);
-    // if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    //     std::cout << "Failed to initialize GLAD" << std::endl;
-    //     return false;
-    // }
-    // glfwSwapInterval(1);
+//     // // gladLoadGL(glfwGetProcAddress);
+//     // if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+//     //     std::cout << "Failed to initialize GLAD" << std::endl;
+//     //     return false;
+//     // }
+//     // glfwSwapInterval(1);
 
-    if (m_Window == nullptr)
-    {
-        std::cerr << "Error: An valid \"Window\" instance is required." << std::endl;
-        return;
-    }
+//     if (m_Window == nullptr)
+//     {
+//         std::cerr << "Error: An valid \"Window\" instance is required." << std::endl;
+//         return;
+//     }
 
-    // 在调用栈上，实例化一个WebGPU设备对象
-	WebGPUDevice webGPUDevice;
-    webGPUDevice.InitDevice(m_Window);
+//     // 在调用栈上，实例化一个WebGPU设备对象
+// 	WebGPUDevice webGPUDevice;
+//     webGPUDevice.InitDevice(m_Window);
 
-	if (m_Scene == nullptr)
-    {
-        std::cerr << "Error: An valid \"Scene\" instance is required." << std::endl;
-        return;
-    }
+// 	if (m_Scene == nullptr)
+//     {
+//         std::cerr << "Error: An valid \"Scene\" instance is required." << std::endl;
+//         return;
+//     }
 
-#if defined(IE_WGPU_NATIVE)
+// #if defined(IE_WGPU_NATIVE)
 
-    while (m_IsRunning)
-    {
-        // if (webGPUDevice.IsInitialized())
-        // {
-            OnFrame();
-        // }
-    }
+//     while (m_IsRunning)
+//     {
+//         // if (webGPUDevice.IsInitialized())
+//         // {
+//             OnFrame();
+//         // }
+//     }
 
-#elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)
+// #elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)
     
-    emscripten_set_main_loop_arg(
-        [](void *userData) {
-			RenderThread* renderThread = static_cast<RenderThread*>(userData);
-			renderThread->OnFrame();
-		},
-		(void*)this, 0, true);
+//     emscripten_set_main_loop_arg(
+//         [](void *userData) {
+// 			RenderThread* renderThread = static_cast<RenderThread*>(userData);
+// 			renderThread->OnFrame();
+// 		},
+// 		(void*)this, 0, true);
 
-    // emscripten_set_main_loop_arg(&RenderLoopCallback, this, 0, false);
+//     // emscripten_set_main_loop_arg(&RenderLoopCallback, this, 0, false);
     
-#endif
+// #endif
 
-    m_Scene->Clear();
+//     m_Scene->Clear();
 
-    WebGPUDevice::Get().Destroy();
-}
+//     WebGPUDevice::Get().Destroy();
+// }

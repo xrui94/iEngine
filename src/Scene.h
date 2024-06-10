@@ -27,8 +27,6 @@ public:
 
     void AddMesh(std::shared_ptr<Mesh> mesh);
 
-    void Resize(uint32_t width, uint32_t height);
-
     void Render();
 
     void RenderOnce();
@@ -36,6 +34,16 @@ public:
     void RenderLoop();
 
     void Clear();
+
+    void Resize(uint32_t width, uint32_t height);
+
+    void Rotate();
+
+    void Translate();
+
+    void Zoom();
+
+    void Pickup();
 
 private:
     std::string m_Id;

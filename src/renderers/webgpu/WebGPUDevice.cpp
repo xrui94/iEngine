@@ -999,7 +999,6 @@ std::optional<Frame> WebGPUDevice::Begin(glm::vec4& clearColor)
     // renderPassDesc.timestampWriteCount = 0; // webgpu-native可以跑通？？？!!!!!!!!!!!!!!!!!!!!!!!!!! 
     renderPassDesc.timestampWrites = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.beginRenderPass(renderPassDesc);
-	std::cout << "Begin Render Pass: " << renderPass << std::endl;
 
 #elif defined(IE_ONLY_EMSCRIPTEN)
     wgpu::TextureView nextTexture = m_SwapChain.GetCurrentTextureView();
@@ -1038,7 +1037,7 @@ std::optional<Frame> WebGPUDevice::Begin(glm::vec4& clearColor)
 		// .timestampWriteCount = 0
     };
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderpassDesc);
-	std::cout << "Begin Render Pass" << std::endl;
+	
 #endif
 
 	return Frame{

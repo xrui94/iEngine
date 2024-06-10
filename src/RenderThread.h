@@ -26,7 +26,7 @@ public:
 public:
     bool IsRunning() const { return m_IsRunning; }
 
-    void Start();
+    void Start(void*(*fn)(void*), void* userData = nullptr);
 
     void SetScene(const std::shared_ptr<Scene>& scene) { m_Scene = scene.get(); }
 
