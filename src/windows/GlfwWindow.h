@@ -4,7 +4,7 @@
 #include "Scene.h"
 #include "../cameras/Camera.h"
 
-#ifdef IE_WGPU_NATIVE
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
     #include "glfw/glfw3.h"
 #endif
 
@@ -38,6 +38,8 @@ public:
     virtual bool GetSwapchainState() override;
 
     virtual void SetSwapchainState(bool updated) override;
+
+    virtual void UpdateSwapChainState(bool state) override;
 
 private:
     GLFWwindow* m_Window;

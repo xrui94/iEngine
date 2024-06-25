@@ -6,14 +6,10 @@
 
 #if defined(IE_WGPU_NATIVE)
     #include <webgpu/webgpu.hpp>
-#elif defined(IE_WGPU_EMSCRIPTEN)
-    #include <webgpu/webgpu.hpp>
-
-    #include <emscripten.h>
-    #include <emscripten/val.h>
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE)
     #include <webgpu/webgpu_cpp.h>
-
+#elif defined(__EMSCRIPTEN__)
+    #include <webgpu/webgpu_cpp.h>
     #include <emscripten.h>
     #include <emscripten/val.h>
 #endif

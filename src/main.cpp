@@ -91,6 +91,9 @@
 
     int main(int, char**)
     {
+        // 设置控制台输出编码为UTF-8
+        system("chcp 65001");
+
         // 模拟Mesh数据（这里以三角形为例）
         // std::vector<VertexAttrs> vertexBuffer =  {
         //     {
@@ -142,7 +145,12 @@
         };
 
         // 创建一个引擎实例
-        auto engine = std::make_unique<Engine>("glfw-wgpu");
+        EngineInitOpts initOpts{};
+        initOpts.containerId = "glfw-wgpu";
+        initOpts.width = 960;
+        initOpts.height = 640;
+        initOpts.usingOffscreenCanvas = true;
+        Engine& engine = Engine::GetInstance(initOpts);
 
         // 创建一个Mesh
         auto mesh = std::make_shared<Mesh>(
@@ -154,7 +162,7 @@
         // 创建一个透视相机
         auto perspectiveCamera = std::make_shared<PerspectiveCamera>(width / static_cast<float>(height));
 
-        // 创建一个场景
+        //// 创建一个场景
         auto scene = std::make_shared<Scene>(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
         // 设置场景属性
@@ -162,9 +170,9 @@
         scene->AddMesh(mesh);
 
         // 将场景添加到引擎实例中
-        engine->AddScene(scene);
+        engine.AddScene(scene);
 
-        exit(EXIT_SUCCESS);;
+        exit(EXIT_SUCCESS);
     }
 #endif  // __EMSCRIPTEN__
 
@@ -172,3 +180,4 @@
 // WebAssembly初级——Embind普通函数、C++类（四）：https://blog.csdn.net/qq_42956179/article/details/118031830
 // How to compile C++ classes to .wasm files for wasmer：https://stackoverflow.com/questions/71462530/how-to-compile-c-classes-to-wasm-files-for-wasmer
 // 智能指针传递对象：https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html
+// https://github.com/beaufortfrancois/webgpu-cross-platform-app/blob/main/main.cpp

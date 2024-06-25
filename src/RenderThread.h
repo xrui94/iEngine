@@ -27,7 +27,7 @@ private:
     Window* m_Window;
 
     //渲染线程
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
     std::thread m_RenderThread;
 #elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)
     pthread_t m_RenderThread;

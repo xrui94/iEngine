@@ -4,7 +4,7 @@
 
 #if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     #include <webgpu/webgpu.hpp>
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
     #include <webgpu/webgpu_cpp.h>
 #endif
 
@@ -12,7 +12,9 @@
 #include "../../Mesh.h"
 
 #ifdef IE_GLFW_WINDOW
-	#ifdef IE_WGPU_NATIVE
+	#if defined(IE_DAWN_NATIVE)
+		#include <webgpu/webgpu_glfw.h>
+	#elif defined(IE_WGPU_NATIVE)
 		#include <glfw3webgpu.h>
 	#endif
 	#include <GLFW/glfw3.h>
@@ -37,7 +39,7 @@ struct UniformLayoutEntryInfo
 	uint32_t				binding;
 #if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::ShaderStageFlags		visibility;
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::ShaderStage		visibility;
 #endif
 	uint64_t				minBindingSize;
@@ -108,32 +110,45 @@ struct Frame
 
 class WebGPUDevice
 {
-public:
+private:
+	// 禁止外部构造
     WebGPUDevice();
+
+    // 禁止外部析构
     ~WebGPUDevice();
 
+    // 禁止外部拷贝构造
+    WebGPUDevice(const WebGPUDevice& webGPUDevice) = delete;
+
+    // 禁止外部赋值操作
+    const WebGPUDevice& operator=(const WebGPUDevice& webGPUDevice) = delete;
+
 public:
+	static WebGPUDevice& Get();
+
 	void Destroy();
 
 	bool IsInitialized() const { return m_IsInitialized; }
 
-#if defined(IE_ONLY_EMSCRIPTEN)
+#if defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 	using AdapterAndDeviceCallback = std::function<void(wgpu::Device)>;
 
 	void RequestAdapterAndDevice(AdapterAndDeviceCallback callback);
 #endif
 
-	wgpu::Device GetDevice() const{ return m_Device; }
+	wgpu::Device GetDevice() const { 
+		return m_Device;
+	}
 
     bool InitDevice(Window* window);
 
 	void DestroyDevice();
 
+	void CreareSurface(/*Window* window*/);
+
 	bool CreateSwapChain(uint32_t width, uint32_t height);
 
 	void DestroySwapChain();
-
-	static WebGPUDevice& Get() { return *s_Instance; }
 
 	float GetTextureFormatGamma(wgpu::TextureFormat format = wgpu::TextureFormat::Undefined) const;
 
@@ -169,7 +184,7 @@ public:
 		bufferDesc.mappedAtCreation = false;
 	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		return m_Device.createBuffer(bufferDesc);
-	#elif defined(IE_ONLY_EMSCRIPTEN)
+	#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 		return m_Device.CreateBuffer(&bufferDesc);
 	#endif
 	}
@@ -238,11 +253,13 @@ public:
 
 	void End(Frame& frame);
 
-private:
-    void CreareSurface(Window* window);
+// private:
+//     void CreareSurface(Window* window);
 
 private:
 	bool m_IsInitialized;
+
+	std::unique_ptr<wgpu::DeviceLostCallback> m_DeviceLostCallbackHandle;
 
 	std::unique_ptr<wgpu::ErrorCallback> m_ErrorCallbackHandle;
 
@@ -252,6 +269,8 @@ private:
   	static WebGPUDevice* s_Instance;
 
     wgpu::Instance m_Instance;
+
+	Window* m_Window;
 
 	wgpu::Surface m_Surface;
 
