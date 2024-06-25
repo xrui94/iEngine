@@ -91,6 +91,9 @@
 
     int main(int, char**)
     {
+        // 设置控制台输出编码为UTF-8
+        system("chcp 65001");
+
         // 模拟Mesh数据（这里以三角形为例）
         // std::vector<VertexAttrs> vertexBuffer =  {
         //     {
@@ -142,7 +145,13 @@
         };
 
         // 创建一个引擎实例
-        auto engine = std::make_unique<Engine>("glfw-wgpu");
+        EngineInitOpts initOpts{};
+        initOpts.containerId = "glfw-wgpu";
+        initOpts.width = 960;
+        initOpts.height = 640;
+        initOpts.usingOffscreenCanvas = true;
+        //auto engine = std::make_unique<Engine>(initOpts);
+        Engine& engine = Engine::GetInstance(initOpts);
 
         // 创建一个Mesh
         auto mesh = std::make_shared<Mesh>(
@@ -151,20 +160,34 @@
             vertexAttrInfoList
         );
 
-        // 创建一个透视相机
-        auto perspectiveCamera = std::make_shared<PerspectiveCamera>(width / static_cast<float>(height));
+        // --- test 01: create scene, camera in main thread. ---
+        //// 创建一个透视相机
+        // auto perspectiveCamera = std::make_shared<PerspectiveCamera>(width / static_cast<float>(height));
 
-        // 创建一个场景
-        auto scene = std::make_shared<Scene>(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        //// 创建一个场景
+        // auto scene = std::make_shared<Scene>(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
-        // 设置场景属性
-        scene->AddCamera(perspectiveCamera);
-        scene->AddMesh(mesh);
+        //// 设置场景属性
+        // scene->AddCamera(perspectiveCamera);
+        // scene->AddMesh(mesh);
 
-        // 将场景添加到引擎实例中
-        engine->AddScene(scene);
+        //// 将场景添加到引擎实例中
+        // engine.AddScene(scene);
+        // --- test 01: create scene, camera in main thread. ---
 
-        exit(EXIT_SUCCESS);;
+
+
+        // --- test 02: create scene, camera in render thread. ---
+        engine.Init();
+        
+        engine.AddMesh(mesh);
+
+        engine.Run();
+        // --- test 02: create scene, camera in render thread. ---
+
+
+
+        exit(EXIT_SUCCESS);
     }
 #endif  // __EMSCRIPTEN__
 

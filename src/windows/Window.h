@@ -20,7 +20,7 @@ struct WindowProps
     uint32_t Width;
     uint32_t Height;
 
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
     WindowProps(const std::string& title = "iEngine",
                 uint32_t width = 960,
                 uint32_t height = 640)
@@ -60,7 +60,7 @@ public:
     virtual uint32_t GetHeight() const = 0;
 
     //
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
 
     virtual void OnResize(uint32_t width, uint32_t height) = 0;
 
@@ -92,4 +92,6 @@ public:
     virtual bool GetSwapchainState() = 0;
 
     virtual void SetSwapchainState(bool updated) = 0;
+
+    virtual void UpdateSwapChainState(bool state) = 0;
 };

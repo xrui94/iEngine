@@ -16,6 +16,9 @@ void Renderer::Resize(uint32_t width, uint32_t height)
     // m_Width = width;
     // m_Height = height;
 
+    // 重新创建Surface，`SurfaceOutput` must be dropped before a new `Surface` is made
+    // WebGPUDevice::Get().CreareSurface();
+
     // 先销毁swap chain
     WebGPUDevice::Get().DestroySwapChain();
 

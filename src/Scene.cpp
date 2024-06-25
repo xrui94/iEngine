@@ -41,6 +41,8 @@ void Scene::Render()
     }
     if (!m_Camera->IsInitialized()) m_Camera->Init();
 
+    if (m_Width == 0 || m_Height == 0) return;
+    std::cout << "Scene LINE 45:m_Width=" << m_Width << ", " << "m_Height=" << m_Height << std::endl;
     auto frame = m_Renderer->BeginFrame(glm::vec4(49.f / 255, 77.f / 255, 121.f / 255, 1.0f));
     if (!frame.has_value()) return;
 
@@ -99,6 +101,11 @@ void Scene::Clear()
 
 void Scene::Resize(uint32_t width, uint32_t height)
 {
+    std::cout << "Scene LINE 104: width=" << width << ", " << "height=" << height << std::endl;
+
+    m_Width = width;
+    m_Height = height;
+
     // 当窗口宽和高为0时，则不再响应resize事件，否则，创建SwapChain时，程序将崩溃
     if (width == 0 || height == 0) return;
 

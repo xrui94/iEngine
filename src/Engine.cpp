@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "cameras/PerspectiveCamera.h"
 
 #ifdef IE_GLFW_WINDOW
     #include "windows/GlfwWindow.h"
@@ -19,14 +20,15 @@
 // 否则，将会在程序链接的时候，报“error LNK2019”的错误
 Engine* Engine::s_Instance = nullptr;
 
-#if defined(IE_WGPU_NATIVE)
-    Engine::Engine(const std::string& name) : m_IsRunning(true)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
+    Engine::Engine(EngineInitOpts initOpts) 
+        : m_InitOpts(initOpts), m_IsRunning(true)
     {
         //
         s_Instance = this;
 
         //
-        m_Window = Window::Create(WindowProps(name));
+        m_Window = Window::Create(WindowProps(initOpts.containerId, initOpts.width, initOpts.height));
 
         // 创建渲染线程
         m_RenderThread = std::make_unique<RenderThread>(m_Window);
@@ -58,44 +60,86 @@ Engine* Engine::s_Instance = nullptr;
 
 Engine::~Engine()
 {
+    delete s_Instance;
+}
+
+Engine& Engine::GetInstance(EngineInitOpts initOpts)
+{
+    if (!s_Instance) s_Instance = new Engine(initOpts);
+    return *s_Instance;
+}
+
+void Engine::Init()
+{
+    //#ifdef IE_GLFW_WINDOW
+    //    GlfwWindow& glfwWindow = static_cast<GlfwWindow&>(m_Window->Get());
+    //    glfwWindow.RegisterEvent();
+    //    glfwWindow.SetScene(m_Scene);
+    //#elif defined(IE_HTML_WINDOW)
+    //    HtmlWindow& htmlWindow = static_cast<HtmlWindow&>(m_Window->Get());
+    //    htmlWindow.RegisterEvent();
+    //    htmlWindow.SetScene(m_Scene);
+    //#endif
+
+    if (m_InitOpts.usingOffscreenCanvas) {
+        glfwMakeContextCurrent(nullptr);
+        // 创建渲染线程
+        // m_RenderThread = std::make_unique<RenderThread>(m_Window);
+        m_RenderThread->Start([](void*) -> void* {
+            s_Instance->Render();
+            return nullptr;
+        });
+    }
+    else {
+        Render();
+    }
+
+    // #if defined(IE_HTML_WINDOW)
+    //     EM_ASM(noExitRuntime=true);
+    // #endif
 }
 
 void Engine::Run()
 {
-#ifdef IE_GLFW_WINDOW
-    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
-    while (!glfwWindowShouldClose(glfwWindow))
-    {
-        //非渲染相关的API，例如处理系统事件，就放到主线程中。
-        glfwPollEvents();
-    }
+    #ifdef IE_GLFW_WINDOW
+        GLFWwindow* glfwRawWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
+        while (!glfwWindowShouldClose(glfwRawWindow))
+        {
+            // 交换缓冲区
+            // glfwSwapBuffers(glfwRawWindow);
 
-    glfwDestroyWindow(glfwWindow);
-    glfwTerminate();
-#elif defined(IE_HTML_WINDOW)
-    // HtmlWindow* htmlwindow = static_cast<HtmlWindow*>(m_Window->GetNativeWindow());
-    // while (!htmlwindow->ShouleClose())
-    // {
+            //非渲染相关的API，例如处理系统事件，就放到主线程中。
+            if (m_InitOpts.usingOffscreenCanvas) glfwPollEvents();
 
-    // }
-            
-    // EM_ASM(noExitRuntime=true);
+            // glfwWaitEvents();
+        }
 
-    // emscripten_set_main_loop([](){
-    //     // std::cout << "Rendering..." << std::endl;
-    // }, 0, false);
-#endif
+        glfwDestroyWindow(glfwRawWindow);
+        glfwTerminate();
+    #elif defined(IE_HTML_WINDOW)
+        // HtmlWindow* htmlwindow = static_cast<HtmlWindow*>(m_Window->GetNativeWindow());
+        // while (!htmlwindow->ShouleClose())
+        // {
+
+        // }
+                
+        // EM_ASM(noExitRuntime=true);
+
+        // emscripten_set_main_loop([](){
+        //     // std::cout << "Rendering..." << std::endl;
+        // }, 0, false);
+    #endif
 }
 
 void Engine::OnFrame()
 {
     // Wait until swapchain is updated
-    if (m_InitOpts.usingOffscreenCanvas) m_Window->GetSwapchainState();
+    //if (m_InitOpts.usingOffscreenCanvas) m_Window->GetSwapchainState();
 
     m_Scene->Render();
 
     // Reset SwapchainUpdated flag
-    if (m_InitOpts.usingOffscreenCanvas) m_Window->SetSwapchainState(false);
+    //if (m_InitOpts.usingOffscreenCanvas) /*m_Window->SetSwapchainState(false);*/ m_Window->UpdateSwapChainState(false);
 }
 
 void Engine::Render()
@@ -105,8 +149,6 @@ void Engine::Render()
 	// 在调用栈上，实例化一个OpenGL上下文对象
   	// // 在调用栈上，实例化一个WebGPU设备对象
     // // 渲染相关的API调用需要放到渲染线程中。
-    // glfwMakeContextCurrent(m_Window);
-
     // // gladLoadGL(glfwGetProcAddress);
     // if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     //     std::cout << "Failed to initialize GLAD" << std::endl;
@@ -120,8 +162,43 @@ void Engine::Render()
         return;
     }
 
+
+    // --- test 02: create scene, camera in render thread. ---
+    // 创建一个透视相机
+    auto perspectiveCamera = std::make_shared<PerspectiveCamera>(m_InitOpts.width / static_cast<float>(m_InitOpts.height));
+
+    // 创建一个场景
+    std::lock_guard<std::mutex> lock(m_SceneMutex);
+    m_Scene = std::make_shared<Scene>(static_cast<uint32_t>(m_InitOpts.width), static_cast<uint32_t>(m_InitOpts.height));
+
+    // 设置场景属性
+    m_Scene->AddCamera(perspectiveCamera);
+
+    for (auto& mesh : m_Meshes)
+    {
+        m_Scene->AddMesh(mesh);
+    }
+    // --- test 02: create scene, camera in render thread. ---
+
+
+
+
+    #ifdef IE_GLFW_WINDOW
+        GlfwWindow& glfwWindow = static_cast<GlfwWindow&>(m_Window->Get());
+        glfwWindow.RegisterEvent();
+        glfwWindow.SetScene(m_Scene);
+    #elif defined(IE_HTML_WINDOW)
+        HtmlWindow& htmlWindow = static_cast<HtmlWindow&>(m_Window->Get());
+        htmlWindow.RegisterEvent();
+        htmlWindow.SetScene(m_Scene);
+    #endif
+
+
+
+
+
     // 在调用栈上，实例化一个WebGPU设备对象
-	WebGPUDevice webGPUDevice;
+	WebGPUDevice& webGPUDevice = WebGPUDevice::Get();
     webGPUDevice.InitDevice(m_Window.get());
 
 	if (m_Scene == nullptr)
@@ -130,14 +207,28 @@ void Engine::Render()
         return;
     }
 
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
 
-    while (m_IsRunning)
+    // while (m_IsRunning)
+    // {
+    //     // if (webGPUDevice.IsInitialized())
+    //     // {
+    //             OnFrame();
+    //     // }
+    // }
+
+    GLFWwindow* glfwRawWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
+    glfwMakeContextCurrent(glfwRawWindow);
+    while (!glfwWindowShouldClose(glfwRawWindow))
     {
-        // if (webGPUDevice.IsInitialized())
-        // {
-                OnFrame();
-        // }
+        // 渲染一帧
+        OnFrame();
+
+        // 交换缓冲区
+        glfwSwapBuffers(glfwRawWindow);
+
+        // 非渲染相关的API，例如处理系统事件，就放到主线程中。
+        if (!m_InitOpts.usingOffscreenCanvas) glfwPollEvents();
     }
 
 #elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)
@@ -166,39 +257,10 @@ void Engine::AddScene(std::shared_ptr<Scene> scene, bool active)
     auto iter = m_SceneMap.find(id);
     if (iter == m_SceneMap.end()) m_SceneMap[id] = scene;
 
-    if (active)
-    {
-    #ifdef IE_GLFW_WINDOW
-        GlfwWindow& glfwWindow = static_cast<GlfwWindow&>(m_Window->Get());
-        glfwWindow.RegisterEvent();
-        glfwWindow.SetScene(m_SceneMap[id]);
-    #elif defined(IE_HTML_WINDOW)
-        HtmlWindow& htmlWindow = static_cast<HtmlWindow&>(m_Window->Get());
-        htmlWindow.RegisterEvent();
-        htmlWindow.SetScene(m_SceneMap[id]);
-    #endif
+    active = true;
 
-        if (m_InitOpts.usingOffscreenCanvas) {
-            // 创建渲染线程
-            // m_RenderThread = std::make_unique<RenderThread>(m_Window);
-            m_RenderThread->Start([](void*) -> void* {
-                Engine::Get().Render();
-                return nullptr;
-            });
-        }
-        else {
-            Render();
-        }
-    }
-
-    //return m_SceneMap[id];
-
-    //
+    Init();
     Run();
-
-// #if defined(IE_HTML_WINDOW)
-//     EM_ASM(noExitRuntime=true);
-// #endif
 }
 
 void Engine::ActiveScene(const std::string& id)
@@ -207,23 +269,15 @@ void Engine::ActiveScene(const std::string& id)
     if (iter != m_SceneMap.end())
     {
         m_Scene = iter->second;
-
-    #ifdef IE_GLFW_WINDOW
-        GlfwWindow& glfwWindow = static_cast<GlfwWindow&>(m_Window->Get());
-        glfwWindow.RegisterEvent();
-        glfwWindow.SetScene(m_Scene);
-    #elif defined(IE_HTML_WINDOW)
-        HtmlWindow& htmlWindow = static_cast<HtmlWindow&>(m_Window->Get());
-        htmlWindow.RegisterEvent();
-        htmlWindow.SetScene(m_Scene);
-    #endif
-        // 如果渲染线程正在运行，则先停止渲染线程
-        //if (m_RenderThread->IsRunning()) m_RenderThread->Stop();
-
-        // 创建渲染线程
-        // m_RenderThread = std::make_unique<RenderThread>(m_Window);
-
-        //
-        Run();
     }
+
+    Init();
+    Run();
+}
+
+
+void Engine::AddMesh(std::shared_ptr<Mesh> mesh)
+{
+    m_Meshes.push_back(mesh);
+    //m_Scene->AddMesh(mesh);
 }

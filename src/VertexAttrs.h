@@ -2,7 +2,7 @@
 
 #if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     #include <webgpu/webgpu.hpp>
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
     #include <webgpu/webgpu_cpp.h>
 #endif
 

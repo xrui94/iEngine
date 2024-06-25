@@ -53,7 +53,7 @@ RenderThread::RenderThread(const std::unique_ptr<Window>& window)
 
 RenderThread::~RenderThread()
 {
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
     if (m_RenderThread.joinable()) {
         m_RenderThread.join();	//等待渲染线程结束
     }
@@ -62,7 +62,7 @@ RenderThread::~RenderThread()
 
 void RenderThread::Start(void*(*fn)(void*), void* userData)
 {
-#if defined(IE_WGPU_NATIVE)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
     m_RenderThread = std::thread(fn, userData);	//创建渲染线程，并指定渲染函数入口。
     m_RenderThread.detach();
 #elif defined(IE_ONLY_EMSCRIPTEN) || defined(IE_WGPU_EMSCRIPTEN)

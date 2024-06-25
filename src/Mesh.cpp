@@ -126,7 +126,7 @@ Mesh::~Mesh()
 
 void Mesh::Destroy()
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     m_NodeUniformBuffer.destroy();
     m_NodeUniformBuffer.release();
 

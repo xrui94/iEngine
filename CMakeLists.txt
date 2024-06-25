@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.10...3.24 FATAL_ERROR)
 
 project(iEngineCore VERSION 0.1.0 LANGUAGES CXX C)
 
@@ -21,7 +21,7 @@ if(EMSCRIPTEN)
         ${CMAKE_SOURCE_DIR}/src
         ${THIRD_PARTY_DIR}
         ${THIRD_PARTY_DIR}/glfw/include
-        # ${CMAKE_SOURCE_DIR}/thirdParty/webgpu-cpp/emscripten/include
+        # ${CMAKE_SOURCE_DIR}/thirdParty/wgpu-native/webgpu-cpp/emscripten/include
         ${CMAKE_SOURCE_DIR}/dist/_deps/webgpu-backend-emscripten-src/include
     )
 
@@ -29,7 +29,7 @@ if(EMSCRIPTEN)
     if(IE_WGPU_EMSCRIPTEN)
         message(STATUS "Using WebGPU impls provided by wgpu-native in an webassembly environment.")
         message(STATUS "Downloading deps: webgpu...")
-        add_subdirectory(thirdParty/webgpu)
+        add_subdirectory(thirdParty/wgpu-native/webgpu)
     else()
         message(STATUS "Using WebGPU impls provided by emscripten in an webassembly environment.")
     endif(IE_WGPU_EMSCRIPTEN)
@@ -85,9 +85,18 @@ if(EMSCRIPTEN)
     # target_link_options(${PROJECT_NAME} PRIVATE -sGL_DEBUG=1)
 
 else()
-
     option(DEBUG_MODE "Set up development helper settings" ON)
-    option(IE_WGPU_NATIVE "Set up development helper settings" ON)
+    option(IE_DAWN_NATIVE "Set up development helper settings" ON)
+    option(IE_WGPU_NATIVE "Set up development helper settings" OFF)
+
+    # set(WEBGPU_BACKEND "DAWN" CACHE STRING "Using dawn native backend for WebGPU." FORCE)
+    # if(IE_WGPU_NATIVE)
+    #     set(WEBGPU_BACKEND "WGPU" CACHE STRING "Using wgpu-native backend for WebGPU." FORCE)
+    #     message(STATUS "Using WebGPU impls provided by wgpu-native.")
+    # else()
+    #     set(WEBGPU_BACKEND "DAWN" CACHE STRING "Using dawn native backend for WebGPU." FORCE)
+    #     message(STATUS "Using WebGPU impls provided by dawn native.")
+    # endif()
 
     if (MSVC)
 	    #忽略保存为unicode警告
@@ -99,16 +108,41 @@ else()
     endif()
 
     # 添加头文件搜索目录
-    INCLUDE_DIRECTORIES(
-        ${CMAKE_SOURCE_DIR}/src
-        ${THIRD_PARTY_DIR}
-        ${THIRD_PARTY_DIR}/glfw/include
-    )
+    if(IE_WGPU_NATIVE)
+        INCLUDE_DIRECTORIES(
+            ${CMAKE_SOURCE_DIR}/src
+            ${THIRD_PARTY_DIR}
+            ${THIRD_PARTY_DIR}/glfw/include
+        )
 
-    message(STATUS "Downloading deps: glfw, webgpu and glfw3webgpu...")
-    add_subdirectory(thirdParty/glfw)
-    add_subdirectory(thirdParty/webgpu)
-    add_subdirectory(thirdParty/glfw3webgpu)
+        message(STATUS "Downloading deps for wgpu-native: glfw, webgpu and glfw3webgpu ...")
+        add_subdirectory(thirdParty/wgpu-native/glfw)
+        add_subdirectory(thirdParty/wgpu-native/webgpu)
+        add_subdirectory(thirdParty/wgpu-native/glfw3webgpu)
+    else()
+        INCLUDE_DIRECTORIES(
+            ${CMAKE_SOURCE_DIR}/src
+        )
+
+        message(STATUS "Downloading deps for dawn: glfw, webgpu and webgpu_glfw ...")
+        # 首先找到并包含子模块目录
+        # find_package(Git QUIET)
+        # if(GIT_FOUND)
+        #     option(GIT_SUBMODULE "Check submodules during build" ON)
+        #     message(STATUS "Submodule update, downloading deps for dawn: glfw, webgpu and webgpu_glfw ...")
+        #     execute_process(
+        #         COMMAND ${GIT_EXECUTABLE} submodule update --init
+        #         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT
+        #     )
+        #     if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+        #         message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        #     endif()
+        # endif()
+        
+        # 然后包含子模块
+        set(DAWN_FETCH_DEPENDENCIES ON)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/thirdParty/dawn EXCLUDE_FROM_ALL)
+    endif()
 
     # 添加源文件
     # FILE(GLOB SRC_FILES
@@ -146,7 +180,7 @@ else()
     #     ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/WebGPURenderer.cpp
     # )
 
-    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/example.*\.cpp)
+    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/example.*\.cpp) # 注意正则表达式的转义字符
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/DepthTexture.cpp)
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/windows/HtmlWindow.cpp)
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/opengl/OpenGLRenderer.cpp)
@@ -159,7 +193,12 @@ else()
     set(CMAKE_EXECUTABLE_SUFFIX ".exe")
 
     #
-    target_compile_definitions(${PROJECT_NAME} PRIVATE IE_WGPU_NATIVE)
+    if(IE_WGPU_NATIVE)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE IE_WGPU_NATIVE)
+    else()
+        target_compile_definitions(${PROJECT_NAME} PRIVATE IE_DAWN_NATIVE)
+    endif(IE_WGPU_NATIVE)
+
     target_compile_definitions(${PROJECT_NAME} PRIVATE IE_GLFW_WINDOW)
 
     #
@@ -186,20 +225,25 @@ else()
     endif()
 
     #
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        CXX_STANDARD 17
-        # VS_DEBUGGER_ENVIRONMENT "DAWN_DEBUG_BREAK_ON_ERROR=1"
-        VS_DEBUGGER_ENVIRONMENT "RUST_BACKTRACE=full"
-    )
     target_treat_all_warnings_as_errors(${PROJECT_NAME})
 
     # find_library(LIB_GLFW glfw3 ${THIRD_PARTY_DIR}/glfw/lib-vc2022)
     # target_link_libraries(${PROJECT_NAME} ${LIB_GLFW})
 
     #
-    target_include_directories(${PROJECT_NAME} PRIVATE ./thirdParty)
-    target_link_libraries(${PROJECT_NAME} glfw webgpu glfw3webgpu)
+    if(IE_WGPU_NATIVE)
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            CXX_STANDARD 17
+            # VS_DEBUGGER_ENVIRONMENT "DAWN_DEBUG_BREAK_ON_ERROR=1"
+            VS_DEBUGGER_ENVIRONMENT "RUST_BACKTRACE=full"
+        )
 
-    #
-    target_copy_webgpu_binaries(${PROJECT_NAME})
+        target_include_directories(${PROJECT_NAME} PRIVATE ./thirdParty)
+        target_link_libraries(${PROJECT_NAME} glfw webgpu glfw3webgpu)
+
+        #
+        target_copy_webgpu_binaries(${PROJECT_NAME})
+    else()
+        target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn glfw webgpu_glfw)
+    endif(IE_WGPU_NATIVE)
 endif()

@@ -26,7 +26,7 @@ void PerspectiveCamera::Destroy()
 	// m_BindGroup.release();
 	// m_BindGroupLayout.release();
 
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		m_CameraUniformBuffer.destroy();
 		m_CameraUniformBuffer.release();
 
@@ -110,8 +110,9 @@ void PerspectiveCamera::UpdateViewMatrix()
 
 void PerspectiveCamera::UpdateProjectionMatrix(float aspect)
 {
+	std::cout << "aspect = " << aspect << std::endl;
 	// Update projection matrix
-	m_GlobalUniforms.projectionMatrix = glm::perspective(45 * PI / 180, aspect, 0.01f, 1000.0f);
+	m_GlobalUniforms.projectionMatrix = glm::perspective(45 * PI / 180, 1.0f, 0.01f, 1000.0f);
 	//m_GlobalUniforms.projectionMatrix = glm::mat4(1.0f);
 	WebGPUDevice::Get().WriteUniformBuffer(
 		m_CameraUniformBuffer,

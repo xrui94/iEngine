@@ -38,7 +38,7 @@ namespace iEngine
 
 	ShaderModule::~ShaderModule()
 	{
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		m_ShaderModule.release();
 	#endif
 	}
@@ -50,7 +50,7 @@ namespace iEngine
 
 		shaderWgslDesc.code = shaderCode.c_str();
 
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		shaderWgslDesc.chain.next = nullptr;
 		shaderWgslDesc.chain.sType = wgpu::SType::ShaderModuleWGSLDescriptor;
 

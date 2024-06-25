@@ -10,12 +10,10 @@
 WebGPUDevice* WebGPUDevice::s_Instance = nullptr;
 
 WebGPUDevice::WebGPUDevice()
-	: m_Width(0), m_Height(0),
+	: m_Width(0), m_Height(0), m_Window{ nullptr },
 	m_Instance(nullptr), m_Surface(nullptr), m_Device(nullptr), m_Queue(nullptr),
 	m_SwapChain(nullptr), m_SwapChainFormat(wgpu::TextureFormat::Undefined), m_IsInitialized(false)
 {
-    //
-    s_Instance = this;
 }
 
 WebGPUDevice::~WebGPUDevice()
@@ -30,6 +28,8 @@ WebGPUDevice::~WebGPUDevice()
 
 	// pipeline.release();
 	// shaderModule.release();
+
+	delete s_Instance;
 }
 
 void WebGPUDevice::Destroy()
@@ -37,6 +37,12 @@ void WebGPUDevice::Destroy()
 	// 注意顺序
 	DestroySwapChain();
 	DestroyDevice();
+}
+
+WebGPUDevice& WebGPUDevice::Get()
+{
+	if (!s_Instance) s_Instance = new WebGPUDevice;
+	return *s_Instance;
 }
 
 #if defined(IE_ONLY_EMSCRIPTEN)
@@ -64,7 +70,9 @@ void WebGPUDevice::Destroy()
 
 bool WebGPUDevice::InitDevice(Window* window)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	m_Window = window;
+
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	#ifdef __EMSCRIPTEN__
 		// m_Instance = wgpu::createInstance(nullptr);	// emsdk-v3.1.61, It's not working.
 		m_Instance = wgpuCreateInstance(nullptr);	// emsdk-v3.1.61, working
@@ -79,7 +87,7 @@ bool WebGPUDevice::InitDevice(Window* window)
 	}
 
 	std::cout << "Creating surface..." << std::endl;
-	CreareSurface(window);
+	CreareSurface(/*window*/);
 	if (!m_Surface)
 	{
 		std::cerr << "Failed to create surface for webgpu on initialization." << std::endl;
@@ -135,7 +143,7 @@ bool WebGPUDevice::InitDevice(Window* window)
     //
 	wgpu::DeviceDescriptor deviceDesc;
 	deviceDesc.label = "My Device";
-	#if defined(IE_WGPU_NATIVE)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
 		deviceDesc.requiredFeaturesCount = 0; // webgpu-native可以跑通？？？!!!!!!!!!!!!!!!!!!!!!!!!!! 
 	#elif defined(IE_WGPU_EMSCRIPTEN)
 		deviceDesc.requiredFeatureCount = 0;	// emsdk-v3.1.61
@@ -146,11 +154,16 @@ bool WebGPUDevice::InitDevice(Window* window)
 	m_Device = adapter.requestDevice(deviceDesc);	// async
 	std::cout << "Got device: " << m_Device << std::endl;
 
+	//
+	m_DeviceLostCallbackHandle = m_Device.setDeviceLostCallback([](wgpu::DeviceLostReason reason, char const* message) {
+		std::cout << "Device lost: Reason: " << (int)reason;
+		if (message) std::cout << ", Message: " << message << "." << std::endl;
+	});
+
 	// Add an error callback for more debug info
 	m_ErrorCallbackHandle = m_Device.setUncapturedErrorCallback([](wgpu::ErrorType type, char const* message) {
-		std::cout << "Device error: type " << type;
-		if (message) std::cout << " (message: " << message << ")";
-		std::cout << std::endl;
+		std::cout << "Device error: Type: " << type;
+		if (message) std::cout << ", message: " << message << "." << std::endl;
 	});
 
 	//
@@ -227,7 +240,7 @@ bool WebGPUDevice::InitDevice(Window* window)
 void WebGPUDevice::DestroyDevice()
 {
 	// 注意顺序
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	m_Queue.release();
 	m_Device.release();
 	m_Surface.release();
@@ -237,11 +250,11 @@ void WebGPUDevice::DestroyDevice()
 #endif
 }
 
-void WebGPUDevice::CreareSurface(Window* window)
+void WebGPUDevice::CreareSurface(/*Window* window*/)
 {
 #if defined(__EMSCRIPTEN__)
     wgpu::SurfaceDescriptorFromCanvasHTMLSelector canvasDesc{};
-	HtmlWindow* htmlWindow = static_cast<HtmlWindow*>(window->GetNativeWindow());
+	HtmlWindow* htmlWindow = static_cast<HtmlWindow*>(m_Window->GetNativeWindow());
     canvasDesc.selector = std::string("#").append(htmlWindow->GetCanvasId()).c_str();
 
     #if defined(IE_WGPU_EMSCRIPTEN)
@@ -261,10 +274,13 @@ void WebGPUDevice::CreareSurface(Window* window)
         m_Surface = m_Instance.CreateSurface(&surfaceDesc);
     #endif
 #else
-	#ifdef IE_WGPU_NATIVE
-		GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
+	#if defined(IE_DAWN_NATIVE)
+		GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
+		m_Surface = wgpu::glfw::CreateSurfaceForWindow(m_Instance, glfwWindow);
+	#elif defined(IE_WGPU_NATIVE)
+		GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
 		m_Surface = glfwGetWGPUSurface(m_Instance, glfwWindow);
-	#endif // IE_WGPU_NATIVE
+	#endif
 #endif	// __EMSCRIPTEN__
 }
 
@@ -274,8 +290,13 @@ bool WebGPUDevice::CreateSwapChain(uint32_t width, uint32_t height)
 	m_Height = height;
 
 	//
+	std::cout << "Current m_SwapChain..." << m_SwapChain << std::endl;
 	std::cout << "Creating swapchain..." << std::endl;
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	//wgpu::SurfaceTexture surfaceTexture;
+	//m_Surface.getCurrentTexture(&surfaceTexture);
+	//surfaceTexture.Drop();
+
 	wgpu::SwapChainDescriptor swapChainDesc;
 	swapChainDesc.width = width;
 	swapChainDesc.height = height;
@@ -301,7 +322,7 @@ bool WebGPUDevice::CreateSwapChain(uint32_t width, uint32_t height)
 
 void WebGPUDevice::DestroySwapChain()
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	m_SwapChain.release();
 #endif
 	m_SwapChain = nullptr;
@@ -355,7 +376,7 @@ wgpu::VertexBufferLayout WebGPUDevice::CreateVertexBufferLayout(std::vector<wgpu
 
 wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<VertexAttrs>& vertexAttrs, const std::string& label)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     wgpu::BufferDescriptor bufferDesc = wgpu::Default;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::BufferDescriptor bufferDesc{};
@@ -368,7 +389,7 @@ wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<VertexAttrs>& vertexAt
 	bufferDesc.mappedAtCreation = false;
 
 	//
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     wgpu::Buffer vertexBuffer = m_Device.createBuffer(bufferDesc);
     m_Queue.writeBuffer(vertexBuffer, 0, vertexAttrs.data(), bufferDesc.size);
 #elif defined(IE_ONLY_EMSCRIPTEN)
@@ -381,7 +402,7 @@ wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<VertexAttrs>& vertexAt
 
 wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<float>& vertexAttrs, const std::string& label)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     wgpu::BufferDescriptor bufferDesc = wgpu::Default;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::BufferDescriptor bufferDesc{};
@@ -394,7 +415,7 @@ wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<float>& vertexAttrs, c
 	bufferDesc.mappedAtCreation = false;
 
 	//
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     wgpu::Buffer vertexBuffer = m_Device.createBuffer(bufferDesc);
     m_Queue.writeBuffer(vertexBuffer, 0, vertexAttrs.data(), bufferDesc.size);
 #elif defined(IE_ONLY_EMSCRIPTEN)
@@ -408,7 +429,7 @@ wgpu::Buffer WebGPUDevice::CreateVertexBuffer(std::vector<float>& vertexAttrs, c
 wgpu::Buffer WebGPUDevice::CreateIndexBuffer(std::vector<uint32_t> indexData, const std::string& label)
 {
     // Create index buffer
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::BufferDescriptor bufferDesc = wgpu::Default;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::BufferDescriptor bufferDesc{};
@@ -418,7 +439,7 @@ wgpu::Buffer WebGPUDevice::CreateIndexBuffer(std::vector<uint32_t> indexData, co
 	bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
 	bufferDesc.mappedAtCreation = false;
 
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::Buffer indexBuffer = m_Device.createBuffer(bufferDesc);
 	m_Queue.writeBuffer(indexBuffer, 0, indexData.data(), bufferDesc.size);
 #elif defined(IE_ONLY_EMSCRIPTEN)
@@ -431,7 +452,7 @@ wgpu::Buffer WebGPUDevice::CreateIndexBuffer(std::vector<uint32_t> indexData, co
 
 void WebGPUDevice::WriteUniformBuffer(wgpu::Buffer buffer, size_t offset, void const* data, size_t size)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	m_Queue.writeBuffer(buffer, offset, data, size);
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	m_Queue.WriteBuffer(buffer, offset, data, size);
@@ -448,7 +469,7 @@ wgpu::Texture WebGPUDevice::CreateDepthTexture()
 	wgpu::TextureFormat depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
 	// Create the depth texture
 	wgpu::TextureDescriptor depthTextureDesc;
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	depthTextureDesc.dimension = wgpu::TextureDimension::_2D;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	depthTextureDesc.dimension = wgpu::TextureDimension::e2D;
@@ -460,7 +481,7 @@ wgpu::Texture WebGPUDevice::CreateDepthTexture()
 	depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
 	depthTextureDesc.viewFormatCount = 1;
 
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&depthTextureFormat;
 	wgpu::Texture depthTexture = m_Device.createTexture(depthTextureDesc);
 #elif defined(IE_ONLY_EMSCRIPTEN)
@@ -483,13 +504,13 @@ wgpu::TextureView WebGPUDevice::CreateDepthTextureView(wgpu::Texture depthTextur
 	depthTextureViewDesc.arrayLayerCount = 1;
 	depthTextureViewDesc.baseMipLevel = 0;
 	depthTextureViewDesc.mipLevelCount = 1;
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::_2D;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	depthTextureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
 #endif
 	depthTextureViewDesc.format = depthTextureFormat;
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::TextureView depthTextureView = depthTexture.createView(depthTextureViewDesc);
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::TextureView depthTextureView = depthTexture.CreateView(&depthTextureViewDesc);
@@ -510,7 +531,7 @@ void WebGPUDevice::CreateUniformBindGroupLayoutEntries(std::vector<UniformLayout
 	auto uniformCount = static_cast<uint32_t>(uniformInfos.size());
 	for(uint32_t i = 0; i < uniformCount; i++)
 	{
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout = wgpu::Default;
 	#elif defined(IE_ONLY_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout{};
@@ -529,7 +550,7 @@ void WebGPUDevice::CreateTextureBindGroupLayoutEntries(std::vector<TextureLayout
 	auto textureCount = static_cast<uint32_t>(textureInfos.size());
 	for(uint32_t i = 0; i < textureCount; i++)
 	{
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout = wgpu::Default;
 	#elif defined(IE_ONLY_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout{};
@@ -549,7 +570,7 @@ void WebGPUDevice::CreateStorageTextureBindGroupLayoutEntries(std::vector<Storag
 	auto storageTextureCount = static_cast<uint32_t>(storageTextureInfos.size());
 	for(uint32_t i = 0; i < storageTextureCount; i++)
 	{
-	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout = wgpu::Default;
 	#elif defined(IE_ONLY_EMSCRIPTEN)
 		wgpu::BindGroupLayoutEntry bindingLayout{};
@@ -583,7 +604,7 @@ wgpu::BindGroupLayout WebGPUDevice::CreateBindGroupLayout(std::vector<wgpu::Bind
     wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
 	bindGroupLayoutDesc.entryCount = static_cast<uint32_t>(entries.size());
 	bindGroupLayoutDesc.entries = entries.data();
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	return m_Device.createBindGroupLayout(bindGroupLayoutDesc);
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	return m_Device.CreateBindGroupLayout(&bindGroupLayoutDesc);
@@ -652,7 +673,7 @@ wgpu::BindGroup WebGPUDevice::CreateBindGroup(std::vector<wgpu::BindGroupEntry>&
 	bindGroupDesc.entryCount = static_cast<uint32_t>(entries.size());
 	bindGroupDesc.entries = entries.data();
 	bindGroupDesc.layout = bindGroupLayout;
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	return m_Device.createBindGroup(bindGroupDesc);
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	return m_Device.CreateBindGroup(&bindGroupDesc);
@@ -687,7 +708,7 @@ wgpu::BlendState WebGPUDevice::CreateBlendState() const
 
 void WebGPUDevice::CreateColorState(wgpu::ColorTargetState& colorTarget, wgpu::BlendState& blendState) const
 {
-#ifdef IE_WGPU_NATIVE
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
 	colorTarget.format = m_SwapChainFormat;	 // webgpu-native可以跑通. emscripten不行？？？!!!!!!!!!!!!!!!!!!!!!!!!!! ,似乎是因为这里在函数内赋值的原因
 	colorTarget.blend = &blendState;
 	colorTarget.writeMask = wgpu::ColorWriteMask::All;
@@ -698,7 +719,7 @@ wgpu::DepthStencilState WebGPUDevice::CreateDepthStencilState() const
 {
 	wgpu::TextureFormat depthTextureFormat = wgpu::TextureFormat::Depth24Plus;
 
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::DepthStencilState depthStencilState = wgpu::Default;
 #elif defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::DepthStencilState depthStencilState{};
@@ -729,7 +750,7 @@ wgpu::PipelineLayout WebGPUDevice::CreateRenderPipelineLayout(std::vector<wgpu::
 {
     wgpu::PipelineLayoutDescriptor layoutDesc{};
 	layoutDesc.bindGroupLayoutCount = static_cast<uint32_t>(bindGroupLayouts.size());
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	layoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)bindGroupLayouts.data();
 	wgpu::PipelineLayout pipelineLayout = m_Device.createPipelineLayout(layoutDesc);
 #elif defined(IE_ONLY_EMSCRIPTEN)
@@ -750,7 +771,7 @@ wgpu::RenderPipeline WebGPUDevice::CreateRenderPipeline(
 	wgpu::RenderPipelineDescriptor pipelineDesc;
 	wgpu::RenderPipeline pipeline = nullptr;
 
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	// ------------------------------------------------------------------------------
 
 	// // Vertex fetch
@@ -971,7 +992,8 @@ wgpu::RenderPipeline WebGPUDevice::CreateRenderPipeline(
 
 std::optional<Frame> WebGPUDevice::Begin(glm::vec4& clearColor)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+
 	wgpu::TextureView nextTexture = m_SwapChain.getCurrentTextureView();
 	if (!nextTexture) {
 		std::cerr << "Cannot acquire next swap chain texture" << std::endl;
@@ -1049,7 +1071,7 @@ std::optional<Frame> WebGPUDevice::Begin(glm::vec4& clearColor)
 
 void WebGPUDevice::Draw(Frame& frame, std::shared_ptr<Mesh> mesh)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN) 
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN) 
     // 设置渲染通道的属性
     frame.renderPass.setPipeline(mesh->GetPipeline());
  
@@ -1083,7 +1105,7 @@ void WebGPUDevice::Draw(Frame& frame, std::shared_ptr<Mesh> mesh)
 
 void WebGPUDevice::End(Frame& frame)
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	// 结束渲染通道通道编码
     frame.renderPass.end();
     frame.renderPass.release();
@@ -1113,7 +1135,7 @@ void WebGPUDevice::End(Frame& frame)
 	//
     m_SwapChain.present();
 
-	#ifdef WEBGPU_BACKEND_DAWN
+	#ifdef IE_DAWN_NATIVE // WEBGPU_BACKEND_DAWN
 		// Check for pending error callbacks
 		m_Device.tick();
 	#endif

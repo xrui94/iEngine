@@ -35,6 +35,10 @@ public:
 
     void Clear();
 
+    bool GetState() const { return m_IsOutdated; }
+
+    void SetState(bool value) { m_IsOutdated = value; }
+
     void Resize(uint32_t width, uint32_t height);
 
     void Rotate();
