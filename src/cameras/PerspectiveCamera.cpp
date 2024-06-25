@@ -26,13 +26,13 @@ void PerspectiveCamera::Destroy()
 	// m_BindGroup.release();
 	// m_BindGroupLayout.release();
 
-	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		m_CameraUniformBuffer.destroy();
 		m_CameraUniformBuffer.release();
 
 		m_BindGroup.release();
 		m_BindGroupLayout.release();
-	#elif defined(IE_ONLY_EMSCRIPTEN)
+	#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 		m_CameraUniformBuffer.Destroy();
 		// m_CameraUniformBuffer.Release();
 

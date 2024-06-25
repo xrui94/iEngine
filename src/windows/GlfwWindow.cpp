@@ -46,7 +46,8 @@ GlfwWindow::GlfwWindow(const WindowProps& props)
         exit(EXIT_FAILURE);
     }
 
-	glfwMakeContextCurrent(m_Window);
+	// OpenGL
+	//glfwMakeContextCurrent(m_Window);
 }
 
 void GlfwWindow::RegisterEvent()

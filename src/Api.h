@@ -28,10 +28,10 @@
 //     const Api& operator=(const Api& api) = delete;
 // };
 
-std::string GetOrCreateEngine();
+void GetOrCreateEngine();
 
-std::string CreateScene();
+void CreateScene();
 
-std::string AddCamera();
+void AddCamera();
 
-std::string AddMesh();
+void AddMesh();

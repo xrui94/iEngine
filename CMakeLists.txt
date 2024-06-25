@@ -122,6 +122,7 @@ else()
     else()
         INCLUDE_DIRECTORIES(
             ${CMAKE_SOURCE_DIR}/src
+            ${THIRD_PARTY_DIR}
         )
 
         message(STATUS "Downloading deps for dawn: glfw, webgpu and webgpu_glfw ...")

@@ -12,7 +12,9 @@
 #include "../../Mesh.h"
 
 #ifdef IE_GLFW_WINDOW
-	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE)
+	#if defined(IE_DAWN_NATIVE)
+		#include <webgpu/webgpu_glfw.h>
+	#elif defined(IE_WGPU_NATIVE)
 		#include <glfw3webgpu.h>
 	#endif
 	#include <GLFW/glfw3.h>
@@ -35,9 +37,9 @@
 struct UniformLayoutEntryInfo
 {
 	uint32_t				binding;
-#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 	wgpu::ShaderStageFlags		visibility;
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 	wgpu::ShaderStage		visibility;
 #endif
 	uint64_t				minBindingSize;
@@ -128,7 +130,7 @@ public:
 
 	bool IsInitialized() const { return m_IsInitialized; }
 
-#if defined(IE_ONLY_EMSCRIPTEN)
+#if defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 	using AdapterAndDeviceCallback = std::function<void(wgpu::Device)>;
 
 	void RequestAdapterAndDevice(AdapterAndDeviceCallback callback);
@@ -180,9 +182,9 @@ public:
 		bufferDesc.size = sizeof(UniformDecl);
 		bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
 		bufferDesc.mappedAtCreation = false;
-	#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+	#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
 		return m_Device.createBuffer(bufferDesc);
-	#elif defined(IE_ONLY_EMSCRIPTEN)
+	#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
 		return m_Device.CreateBuffer(&bufferDesc);
 	#endif
 	}

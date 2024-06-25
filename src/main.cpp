@@ -150,7 +150,6 @@
         initOpts.width = 960;
         initOpts.height = 640;
         initOpts.usingOffscreenCanvas = true;
-        //auto engine = std::make_unique<Engine>(initOpts);
         Engine& engine = Engine::GetInstance(initOpts);
 
         // 创建一个Mesh
@@ -160,32 +159,18 @@
             vertexAttrInfoList
         );
 
-        // --- test 01: create scene, camera in main thread. ---
-        //// 创建一个透视相机
-        // auto perspectiveCamera = std::make_shared<PerspectiveCamera>(width / static_cast<float>(height));
+        // 创建一个透视相机
+        auto perspectiveCamera = std::make_shared<PerspectiveCamera>(width / static_cast<float>(height));
 
         //// 创建一个场景
-        // auto scene = std::make_shared<Scene>(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        auto scene = std::make_shared<Scene>(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
-        //// 设置场景属性
-        // scene->AddCamera(perspectiveCamera);
-        // scene->AddMesh(mesh);
+        // 设置场景属性
+        scene->AddCamera(perspectiveCamera);
+        scene->AddMesh(mesh);
 
-        //// 将场景添加到引擎实例中
-        // engine.AddScene(scene);
-        // --- test 01: create scene, camera in main thread. ---
-
-
-
-        // --- test 02: create scene, camera in render thread. ---
-        engine.Init();
-        
-        engine.AddMesh(mesh);
-
-        engine.Run();
-        // --- test 02: create scene, camera in render thread. ---
-
-
+        // 将场景添加到引擎实例中
+        engine.AddScene(scene);
 
         exit(EXIT_SUCCESS);
     }
@@ -195,3 +180,4 @@
 // WebAssembly初级——Embind普通函数、C++类（四）：https://blog.csdn.net/qq_42956179/article/details/118031830
 // How to compile C++ classes to .wasm files for wasmer：https://stackoverflow.com/questions/71462530/how-to-compile-c-classes-to-wasm-files-for-wasmer
 // 智能指针传递对象：https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html
+// https://github.com/beaufortfrancois/webgpu-cross-platform-app/blob/main/main.cpp

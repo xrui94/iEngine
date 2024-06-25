@@ -126,7 +126,7 @@ Mesh::~Mesh()
 
 void Mesh::Destroy()
 {
-#if defined(IE_WGPU_NATIVE) || defined(IE_DAWN_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
+#if defined(IE_WGPU_NATIVE) || defined(IE_WGPU_EMSCRIPTEN)
     m_NodeUniformBuffer.destroy();
     m_NodeUniformBuffer.release();
 
@@ -149,7 +149,7 @@ void Mesh::Destroy()
         item.second.release();
     }
     m_BindGroupLayouts.clear();
-#elif defined(IE_ONLY_EMSCRIPTEN)
+#elif defined(IE_DAWN_NATIVE) || defined(IE_ONLY_EMSCRIPTEN)
     m_NodeUniformBuffer.Destroy();
     m_GPUVertexBuffer.Destroy();
     m_GPUIndexBuffer.Destroy();

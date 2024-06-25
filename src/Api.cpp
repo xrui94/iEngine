@@ -1,25 +1,25 @@
 #include "Api.h"
 #include "Engine.h"
 #include "Scene.h"
-#include "Camera.h"
+#include "cameras/Camera.h"
 
 
-std::string GetOrCreateEngine()
+void GetOrCreateEngine()
 {
-    Engine::GetInstance();
+        
 }
 
-std::string CreateScene()
+void CreateScene()
 {
-
+    
 }
 
-std::string AddCamera()
+void AddCamera()
 {
-
+    
 }
 
-std::string AddMesh()
+void AddMesh()
 {
-
+    
 }

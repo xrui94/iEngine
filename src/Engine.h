@@ -46,7 +46,7 @@ public:
 
     void AddScene(std::shared_ptr<Scene> scene, bool active = true);
 
-    void ActiveScene(const std::string& id);
+    void ActiveScene(const std::string& id = "");
 
     void AddMesh(std::shared_ptr<Mesh> mesh);
 
