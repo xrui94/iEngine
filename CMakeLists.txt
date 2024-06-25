@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10...3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10...3.27 FATAL_ERROR)
 
 project(iEngineCore VERSION 0.1.0 LANGUAGES CXX C)
 
@@ -43,8 +43,6 @@ if(EMSCRIPTEN)
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/example.*\.cpp) # 注意正则匹配中的转移字符
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/DepthTexture.cpp)
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/windows/GlfwWindow.cpp)
-    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/opengl/OpenGLRenderer.cpp)    # 脱离当前引擎的架构，临时测试渲染器 
-    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/WebGPURenderer.cpp)    # 脱离当前引擎的架构，临时测试渲染器
 
     #
     add_executable(${PROJECT_NAME} ${SRC_FILES})
@@ -184,8 +182,6 @@ else()
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/example.*\.cpp) # 注意正则表达式的转义字符
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/DepthTexture.cpp)
     list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/windows/HtmlWindow.cpp)
-    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/opengl/OpenGLRenderer.cpp)
-    list(FILTER SRC_FILES EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/src/renderers/webgpu/WebGPURenderer.cpp)
 
     add_executable(${PROJECT_NAME} ${SRC_FILES})
 

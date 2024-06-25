@@ -11,28 +11,28 @@
 
  ## 1. Compile and Build
 
-### 1.1 for Native
+### 1.1 For Native
 
-- First, make a build directory
+- **Using Dawn backend**
+
+```
+git submodule update --init
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+- **Using WGPU-Native backend**
 
 ```ps
 mkdir build
 cd build
-```
-
-- Second, Generate the *.sln(Visual Studio 2022) project file
-
-```ps
 cmake ..
-```
-
-- Last, Build
-
-```ps
 cmake --build .
 ```
 
-### 1.3 for Web
+### 1.3 For Web
 
 - First, make a build directory
 

@@ -4,12 +4,6 @@
 
 #ifdef IE_HTML_WINDOW
 	#include "windows/HtmlWindow.h"
-    #include "renderers/opengl/OpenGLRenderer.h"
-
-    #ifdef IE_ONLY_EMSCRIPTEN
-        #include "renderers/webgpu/WebGPURenderer.h"
-    #endif
-
     #include <emscripten/threading.h>
 #endif
 
@@ -97,23 +91,6 @@ void RenderThread::Start(void*(*fn)(void*), void* userData)
     //     return nullptr;  
     // }, (void*)this);
     pthread_create(&m_RenderThread, &attr, fn, userData);
-
-
-    // Test02: OpenGLRenderer (working!)
-    // initArgs.window = nullptr;
-    // initArgs.canvasId = canvasId;
-    // initArgs.width = m_Window->GetWidth();
-    // initArgs.height = m_Window->GetHeight();
-    // std::cout << "Using WebGL2 backend." << std::endl;
-    // pthread_create(&m_RenderThread, &attr, initOpenGLRenderer, (void*)&initArgs);
-
-    // Test03: WebGPURenderer (working!)
-    // initArgs.window = nullptr;
-    // initArgs.canvasId = canvasId;
-    // initArgs.width = m_Window->GetWidth();
-    // initArgs.height = m_Window->GetHeight();
-    // std::cout << "Using WebGPU backend." << std::endl;
-    // pthread_create(&m_RenderThread, &attr, initWebGPURenderer, (void*)&initArgs);
     
     // 将渲染线程作为后台线程启动
     // 使用该启动方式，只有主进程停止了，渲染线程才会停止
