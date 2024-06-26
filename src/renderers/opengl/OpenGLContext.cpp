@@ -1,6 +1,6 @@
 std::shared_ptr<RenderingContext> RenderingContext::Create(void* window)
 {
-    return std::make_shared<OpenGLRenderContext>(static_cast<GLFWwindow*>(window));
+    return std::make_shared<OpenGLContext>(static_cast<GLFWwindow*>(window));
 }
 
 #include <iostream>
@@ -8,130 +8,125 @@ std::shared_ptr<RenderingContext> RenderingContext::Create(void* window)
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include "imgui/imgui_impl_glfw.h"
-
-#include "Event.h"
-#include "OpenGLRenderContext.h"
+#include "OpenGLContext.h"
 
 
 
-OpenGLRenderContext::OpenGLRenderContext(GLFWwindow* window)
+OpenGLContext::OpenGLContext(Window* window)
     : m_Window(window)
 {
 }
 
-bool OpenGLRenderContext::Init()
+// bool OpenGLContext::Init()
+// {
+//     // Create opengl graphics context
+//     glfwMakeContextCurrent(m_Window);
+
+//     // glad: load all OpenGL function pointers，注册glad函数地址
+//     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+//     {
+//         std::cerr << "Failed to initialize GLAD" << std::endl;
+//     }
+
+//     return true;
+// }
+
+void OpenGLContext::SwapBuffers()
 {
-    // Create opengl graphics context
-    glfwMakeContextCurrent(m_Window);
-
-    // glad: load all OpenGL function pointers，注册glad函数地址
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-    }
-
-    return true;
-}
-
-void OpenGLRenderContext::SwapBuffers()
-{
-    glfwPollEvents();
+    // glfwPollEvents();
     glfwSwapBuffers(m_Window);
 }
 
-void OpenGLRenderContext::Destroy()
-{
-    glfwDestroyWindow(m_Window);
-    glfwTerminate();
-}
+// void OpenGLContext::Destroy()
+// {
+//     glfwDestroyWindow(m_Window);
+//     glfwTerminate();
+// }
 
 
 // 激活/禁用OpenGL模式
 
-void OpenGLRenderContext::EnableDepthTest()
+void OpenGLContext::EnableDepthTest()
 {
     glEnable(GL_DEPTH_TEST);
 }
 
-void OpenGLRenderContext::DisableDepthTest()
+void OpenGLContext::DisableDepthTest()
 {
     glDisable(GL_DEPTH_TEST);
 }
 
-void OpenGLRenderContext::EnableCullFace()
+void OpenGLContext::EnableCullFace()
 {
     glEnable(GL_CULL_FACE);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
 }
 
-void OpenGLRenderContext::DisableCullFace()
+void OpenGLContext::DisableCullFace()
 {
     glDisable(GL_CULL_FACE);
 }
 
-void OpenGLRenderContext::EnableBlend()
+void OpenGLContext::EnableBlend()
 {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void OpenGLRenderContext::DisableBlend()
+void OpenGLContext::DisableBlend()
 {
     glDisable(GL_BLEND);
 }
 
-void OpenGLRenderContext::DepthMask(bool readOnly)
+void OpenGLContext::DepthMask(bool readOnly)
 {
     glDepthMask(readOnly);
 }
 
-void OpenGLRenderContext::EnableMultiSample()
+void OpenGLContext::EnableMultiSample()
 {
     // 设置OpenGL启用多重采样
     glEnable(GL_MULTISAMPLE);
 }
 
-void OpenGLRenderContext::DisableMultiSample()
+void OpenGLContext::DisableMultiSample()
 {
     glDisable(GL_MULTISAMPLE);
 }
 
-void OpenGLRenderContext::EnablePolygonOffset(float factor, float units)
+void OpenGLContext::EnablePolygonOffset(float factor, float units)
 {
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(factor, units);
 }
 
-void OpenGLRenderContext::DisablePolygonOffset()
+void OpenGLContext::DisablePolygonOffset()
 {
     glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 // // 设置、获取视口
-// void OpenGLRenderContext::UpdateViewport(int32_t width, int32_t height)
+// void OpenGLContext::UpdateViewport(int32_t width, int32_t height)
 // {
 //     m_Window->m_Width = width;
 //     m_Window->m_Height = height;
 // }
 
-// void OpenGLRenderContext::GetViewport(int32_t* width, int32_t* height)
+// void OpenGLContext::GetViewport(int32_t* width, int32_t* height)
 // {
 //     *width = m_Window->m_Width;
 //     *height = m_Window->m_Height;
 // }
 
-void OpenGLRenderContext::SetViewport(int32_t width, int32_t height)
+void OpenGLContext::SetViewport(int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    glViewport(0, 0, width, height);
+    glViewport(x, y, width, height);
 }
 
 
 // 清理缓冲区
-void OpenGLRenderContext::Clear()
+void OpenGLContext::Clear()
 {
     // 渲染场景背景
     // 颜色归一化： value - minValue / (maxValue - minValue)
@@ -140,42 +135,42 @@ void OpenGLRenderContext::Clear()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-uint32_t OpenGLRenderContext::GetPrimitiveType(n_GIECore::MeshType meshType)
+uint32_t OpenGLContext::GetPrimitiveType(MeshType meshType)
 {
     switch (meshType)
     {
-        case n_GIECore::MeshType::MT_POINT:
+        case MeshType::MT_POINT:
             return GL_POINT;
-        case n_GIECore::MeshType::MT_LINE:
+        case MeshType::MT_LINE:
             return GL_LINES;
-        case n_GIECore::MeshType::MT_FACE:
+        case MeshType::MT_FACE:
             return GL_TRIANGLES;
-        case n_GIECore::MeshType::MT_TEXT:
+        case MeshType::MT_TEXT:
             return GL_TRIANGLES;
         default:
             throw("Unknown OpenGL rendering primitive type.");
     }
 }
 
-uint32_t OpenGLRenderContext::GetVertexDataType(n_GIECore::VertexDataType dataType)
+uint32_t OpenGLContext::GetVertexDataType(VertexDataType dataType)
 {
     switch (dataType)
     {
-        case n_GIECore::VertexDataType::INT32:
+        case VertexDataType::INT32:
             return GL_INT;
-        case n_GIECore::VertexDataType::FLOAT32:
+        case VertexDataType::FLOAT32:
             return GL_FLOAT;
         default:
             throw("Unknown OpenGL vertex Attribute data type.");
     }
 }
 
-void OpenGLRenderContext::BindVAO(uint32_t vao)
+void OpenGLContext::BindVAO(uint32_t vao)
 {
     glBindVertexArray(vao);
 }
 
-uint32_t OpenGLRenderContext::CreateVertexArray(std::shared_ptr<n_GIECore::ShaderProgram> pShader, std::shared_ptr<n_GIECore::Model> pRenderModel)
+uint32_t OpenGLContext::CreateVertexArray(std::shared_ptr<nShaderProgram> pShader, std::shared_ptr<Model> pRenderModel)
 {
     uint32_t vao = 99999;
     glCreateVertexArrays(1, &vao);
@@ -187,7 +182,7 @@ uint32_t OpenGLRenderContext::CreateVertexArray(std::shared_ptr<n_GIECore::Shade
     pRenderModel->SetVBO("base", &vbo);
 
     // 获取顶点属性
-    std::map<std::string, n_GIECore::BufferLayout> vertexAttrsInfo = pRenderModel->GetVertexAttrsInfo();
+    std::map<std::string, BufferLayout> vertexAttrsInfo = pRenderModel->GetVertexAttrsInfo();
 
     // // 以绑定顶点属性数据的方式，绑定分解向量
     // let splitVectors = pRenderModel->GetSplitVectors();
@@ -364,7 +359,7 @@ uint32_t OpenGLRenderContext::CreateVertexArray(std::shared_ptr<n_GIECore::Shade
 //     return vao;
 // }
 
-uint32_t OpenGLRenderContext::BindVertexBuffer(uint32_t bufferType, std::vector<uint8_t>& buffer, uint32_t usage)
+uint32_t OpenGLContext::BindVertexBuffer(uint32_t bufferType, std::vector<uint8_t>& buffer, uint32_t usage)
 {
     uint32_t bufferHandle = 99999;
     glCreateBuffers(1, &bufferHandle);
@@ -373,22 +368,22 @@ uint32_t OpenGLRenderContext::BindVertexBuffer(uint32_t bufferType, std::vector<
     return bufferHandle;
 }
 
-uint32_t OpenGLRenderContext::CreateVertexBuffer(std::vector<uint8_t>& vertexAttrs)
+uint32_t OpenGLContext::CreateVertexBuffer(std::vector<uint8_t>& vertexAttrs)
 {
     return BindVertexBuffer(GL_ARRAY_BUFFER, vertexAttrs, GL_STATIC_DRAW);
 }
 
-uint32_t OpenGLRenderContext::CreateIndexBuffer(std::vector<uint8_t>& indices)
+uint32_t OpenGLContext::CreateIndexBuffer(std::vector<uint8_t>& indices)
 {
     return BindVertexBuffer(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW);
 }
 
-uint32_t OpenGLRenderContext::CreateInstanceBuffer(std::vector<uint8_t>& instances)
+uint32_t OpenGLContext::CreateInstanceBuffer(std::vector<uint8_t>& instances)
 {
     return BindVertexBuffer(GL_ARRAY_BUFFER, instances, GL_STATIC_DRAW);
 }
 
-void OpenGLRenderContext::UpdateInstanceBuffer(uint32_t BufferHandle, std::vector<uint8_t>& instances)
+void OpenGLContext::UpdateInstanceBuffer(uint32_t BufferHandle, std::vector<uint8_t>& instances)
 {
     glBindBuffer(GL_ARRAY_BUFFER, BufferHandle);
     // console.log(this.model.instances.byteLength, instances.byteLength, glGetBufferParameter(GL_ARRAY_BUFFER, GL_BUFFER_SIZE));
@@ -397,7 +392,7 @@ void OpenGLRenderContext::UpdateInstanceBuffer(uint32_t BufferHandle, std::vecto
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void OpenGLRenderContext::SetVertexBuffer(std::shared_ptr<n_GIECore::ShaderProgram> pShader, std::map<std::string, n_GIECore::BufferLayout> bufferLayout)
+void OpenGLContext::SetVertexBuffer(std::shared_ptr<ShaderProgram> pShader, std::map<std::string, BufferLayout> bufferLayout)
 {
     // 解除绑定
     //glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
@@ -406,7 +401,7 @@ void OpenGLRenderContext::SetVertexBuffer(std::shared_ptr<n_GIECore::ShaderProgr
     uint32_t attrLoc = 99999;
     for(auto& attrInfo : bufferLayout)
     {
-        n_GIECore::BufferLayout attr = attrInfo.second;
+        BufferLayout attr = attrInfo.second;
         // std::cout << pShader->GetProgram() << std::endl;
         attrLoc = GetAttrLocation(pShader->GetProgram(), attr.Name);
         // std::cout << "attr.Name:\t" << attr.Name << ",\t attrLoc:\t" << attrLoc << std::endl;
@@ -414,7 +409,7 @@ void OpenGLRenderContext::SetVertexBuffer(std::shared_ptr<n_GIECore::ShaderProgr
         glVertexAttribPointer(
             attrLoc,
             attr.Count,
-            GetVertexDataType(n_GIECore::VertexDataType(attr.DataType)),
+            GetVertexDataType(VertexDataType(attr.DataType)),
             attr.Normalized,
             attr.Stride,
             (void *)attr.Offset);
@@ -424,7 +419,7 @@ void OpenGLRenderContext::SetVertexBuffer(std::shared_ptr<n_GIECore::ShaderProgr
     // glBindBuffer(GL_ARRAY_BUFFER, null);
 }
 
-void OpenGLRenderContext::SetInstanceBuffer(std::shared_ptr<n_GIECore::ShaderProgram> pShader, n_GIECore::BufferLayout layoutInfo)
+void OpenGLContext::SetInstanceBuffer(std::shared_ptr<ShaderProgram> pShader, BufferLayout layoutInfo)
 {
     uint32_t attrLoc = GetAttrLocation(pShader->GetProgram(), layoutInfo.Name);
     for (uint32_t i = attrLoc, len = attrLoc + layoutInfo.Batch; i < len; i++) {
@@ -432,7 +427,7 @@ void OpenGLRenderContext::SetInstanceBuffer(std::shared_ptr<n_GIECore::ShaderPro
         glVertexAttribPointer(
             i,
             layoutInfo.Count,
-            GetVertexDataType(n_GIECore::VertexDataType(layoutInfo.DataType)),
+            GetVertexDataType(VertexDataType(layoutInfo.DataType)),
             layoutInfo.Normalized,
             layoutInfo.Stride,
             (void *)((i - attrLoc) * layoutInfo.Offset));
@@ -448,7 +443,7 @@ void OpenGLRenderContext::SetInstanceBuffer(std::shared_ptr<n_GIECore::ShaderPro
 
 // Uniform Block数据
 
-uint32_t OpenGLRenderContext::CreateUniformBlock(uint32_t index, size_t bufferSize, float* buffer)
+uint32_t OpenGLContext::CreateUniformBlock(uint32_t index, size_t bufferSize, float* buffer)
 {
     // 创建Uniform缓冲块
     uint32_t ubo = 99999;
@@ -463,13 +458,13 @@ uint32_t OpenGLRenderContext::CreateUniformBlock(uint32_t index, size_t bufferSi
     return ubo;
 }
 
-void OpenGLRenderContext::SetUniformBlock(uint32_t program, std::string name, uint32_t index)
+void OpenGLContext::SetUniformBlock(uint32_t shaderProgram, std::string name, uint32_t index)
 {
-    uint32_t uniformBlockIdx = glGetUniformBlockIndex(program, name.c_str());
-    glUniformBlockBinding(program, uniformBlockIdx, index);
+    uint32_t uniformBlockIdx = glGetUniformBlockIndex(shaderProgram, name.c_str());
+    glUniformBlockBinding(shaderProgram, uniformBlockIdx, index);
 }
 
-// void OpenGLRenderContext::UpdateUniformBlock(uint32_t bufferHandle, uint32_t dstByteOffset, size_t bufferSize, std::vector<T> buffer)
+// void OpenGLContext::UpdateUniformBlock(uint32_t bufferHandle, uint32_t dstByteOffset, size_t bufferSize, std::vector<T> buffer)
 // {
 //     // 传递矩阵给unifor block内存区域（GLSL）   
 //     glBindBuffer(GL_UNIFORM_BUFFER, bufferHandle);
@@ -477,7 +472,7 @@ void OpenGLRenderContext::SetUniformBlock(uint32_t program, std::string name, ui
 //     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 // }
 
-// void OpenGLRenderContext::UpdateUniformBlock(uint32_t bufferHandle, uint32_t dstByteOffset, size_t bufferSize, T buffer)
+// void OpenGLContext::UpdateUniformBlock(uint32_t bufferHandle, uint32_t dstByteOffset, size_t bufferSize, T buffer)
 // {
 //     // 传递矩阵给unifor block内存区域（GLSL）   
 //     glBindBuffer(GL_UNIFORM_BUFFER, bufferHandle);
@@ -489,7 +484,7 @@ void OpenGLRenderContext::SetUniformBlock(uint32_t program, std::string name, ui
 
 // 纹理操作    
 
-uint32_t OpenGLRenderContext::CreateTexture(n_GIECore::TextureImage& textureImage)
+uint32_t OpenGLContext::CreateTexture(TextureImage& textureImage)
 {
     // 创建并绑定纹理对象
     uint32_t textureHandle;
@@ -563,12 +558,12 @@ uint32_t OpenGLRenderContext::CreateTexture(n_GIECore::TextureImage& textureImag
     return textureHandle;
 }
 
-void OpenGLRenderContext::ActiveTexture(uint32_t uint)
+void OpenGLContext::ActiveTexture(uint32_t uint)
 {
     glActiveTexture(GL_TEXTURE0 + uint);
 }
 
-void OpenGLRenderContext::BindTexture(uint32_t handle)
+void OpenGLContext::BindTexture(uint32_t handle)
 {
     glBindTexture(GL_TEXTURE_2D, handle);
 }
@@ -576,7 +571,7 @@ void OpenGLRenderContext::BindTexture(uint32_t handle)
 
 // 获取GPU数据
 
-void OpenGLRenderContext::ReadPixels(const uint32_t* xPos, const uint32_t* yPos, const uint32_t* xWidth, const uint32_t* yWidth, uint8_t* pixels)
+void OpenGLContext::ReadPixels(const uint32_t* xPos, const uint32_t* yPos, const uint32_t* xWidth, const uint32_t* yWidth, uint8_t* pixels)
 {
     glReadPixels(*xPos, *yPos, *xWidth, *yWidth, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 }
@@ -585,7 +580,7 @@ void OpenGLRenderContext::ReadPixels(const uint32_t* xPos, const uint32_t* yPos,
 
 // Shader操作
 
-void OpenGLRenderContext::CompileShader(const std::string vertCode, const std::string fragCode, const std::string geomCode, ShaderCom shaderCom)
+void OpenGLContext::CompileShader(const std::string vertCode, const std::string fragCode, const std::string geomCode, ShaderCom shaderCom)
 {
     // parse file stream form JS const variable
     const char* vertCode_ = vertCode.c_str();
@@ -613,7 +608,7 @@ void OpenGLRenderContext::CompileShader(const std::string vertCode, const std::s
     }
 }
 
-void OpenGLRenderContext::LinkProgram(uint32_t program)
+void OpenGLContext::LinkProgram(uint32_t program)
 {
     glLinkProgram(program);
 
@@ -628,12 +623,12 @@ void OpenGLRenderContext::LinkProgram(uint32_t program)
     }
 }
 
-void OpenGLRenderContext::UseProgram(uint32_t program)
+void OpenGLContext::UseProgram(uint32_t program)
 {
     glUseProgram(program);
 }
 
-uint32_t OpenGLRenderContext::MakeProgram(const std::string vertCode, const std::string fragCode)
+uint32_t OpenGLContext::MakeProgram(const std::string vertCode, const std::string fragCode)
 {
     ShaderCom shaderCom;
     CompileShader(vertCode, fragCode, "", shaderCom);
@@ -645,7 +640,7 @@ uint32_t OpenGLRenderContext::MakeProgram(const std::string vertCode, const std:
     return program;
 }
 
-void OpenGLRenderContext::DestroyProgram(uint32_t program)
+void OpenGLContext::DestroyProgram(uint32_t program)
 {
     // 清理WebGL程序
     glUseProgram(0);
@@ -653,7 +648,7 @@ void OpenGLRenderContext::DestroyProgram(uint32_t program)
 }
 
 // utility function for checking shader compilation/linking errors.
-void OpenGLRenderContext::CheckCompileErrors(uint32_t* shaderHandle, std::string shaderType)
+void OpenGLContext::CheckCompileErrors(uint32_t* shaderHandle, std::string shaderType)
 {
     GLint success;
     GLchar infoLog[1024];
@@ -683,60 +678,18 @@ void OpenGLRenderContext::CheckCompileErrors(uint32_t* shaderHandle, std::string
     }
 }
 
-int32_t OpenGLRenderContext::GetAttrLocation(uint32_t program, std::string name)
+int32_t OpenGLContext::GetAttrLocation(uint32_t program, std::string name)
 {
     // return glGetAttribLocation(gl.getParameter(gl.CURRENT_PROGRAM), name);
     return glGetAttribLocation(program, name.c_str());
 }
 
-int32_t OpenGLRenderContext::GetUniformLocation(uint32_t program, std::string name)
+int32_t OpenGLContext::GetUniformLocation(uint32_t program, std::string name)
 {
     return glGetUniformLocation(program, name.c_str());
 }
 
-template<typename T>
-void OpenGLRenderContext::SetUniformData(uint32_t program, std::string name, n_GIECore::UniformDataType dataType, std::vector<T> values)
-{
-    switch (dataType) {
-        case n_GIECore::UniformDataType::BOOL:
-            // GLSL中4字节对齐, 因此GLSL中的bool比变量, 传递JS中的int值即可
-            glUniform1i(GetUniformLocation(program, name), (int32_t)values.data());
-            break;
-        case n_GIECore::UniformDataType::INT:
-            glUniform1i(GetUniformLocation(program, name), (int32_t)values.data());
-            break;
-        case n_GIECore::UniformDataType::FLOAT:
-            glUniform1f(GetUniformLocation(program, name), *(float *)values.data());
-            break;
-        case n_GIECore::UniformDataType::VEC2:
-            glUniform2fv(GetUniformLocation(program, name), values.size(), values.data());
-            break;
-        case n_GIECore::UniformDataType::VEC3:
-            glUniform3fv(GetUniformLocation(program, name), values.size(), values.data());
-            break;
-        case n_GIECore::UniformDataType::VEC4:
-            glUniform4fv(GetUniformLocation(program, name), values.size(), values.data());
-            break;
-        case n_GIECore::UniformDataType::MAT2:
-            glUniformMatrix2fv(GetUniformLocation(program, name), false, values.data());
-            break;
-        case n_GIECore::UniformDataType::MAT3:
-            glUniformMatrix3fv(GetUniformLocation(program, name), false, values.data());
-            break;
-        case n_GIECore::UniformDataType::MAT4:
-            glUniformMatrix4fv(GetUniformLocation(program, name), false, values.data());
-            break;
-        default:
-            break;
-    }
-}
-
-// T OpenGLRenderContext::GetUniformData(uint32_t program, std::string name)
-// {
-//     return glGetUniform(program, GetUniformLocation(program, name.c_str()));
-// }
-
-void OpenGLRenderContext::Draw(std::shared_ptr<n_GIECore::Model> pRenderModel)
+void OpenGLContext::Draw(std::shared_ptr<Model> pRenderModel)
 {
     if (pRenderModel->HasInstances())
     {

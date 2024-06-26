@@ -1,43 +1,35 @@
 #pragma once
 
-// #include "GLFW/glfw3.h"
-
 #include "RenderingContext.h"
 
 #include "Shader.h"
-#include "Model.h"
 #include "Enum.h"
 #include "ShaderProgram.h"
+#include "TextureImage.h"
+#include "Model.h"
+
 
 struct GLFWwindow;
 
 
-struct ShaderCom
-{
-    uint32_t VertShader;
-    uint32_t FragShader;
-    uint32_t GeomShader;
-};
-    
+
 class OpenGLRenderContext : public RenderingContext
 {
 public:
-    OpenGLRenderContext::OpenGLRenderContext(GLFWwindow* window);
+    OpenGLRenderContext::OpenGLRenderContext(Window* window);
 
-    bool Init() override;
+    // bool Init() override;
     void SwapBuffers() override;
-    void Destroy() override;
-
-    static std::shared_ptr<RenderingContext> Create(void* window);
+    // void Destroy() override;
 
 
-    // 获取OpenGL内置变量
-    void Version();
-    void RedBit();
-    void GreenBit();
-    void BlueBit();
-    void AlphaBit();
-    void GetCurrentProgram();
+    // // 获取OpenGL内置变量
+    // void Version();
+    // void RedBit();
+    // void GreenBit();
+    // void BlueBit();
+    // void AlphaBit();
+    // void GetCurrentProgram();
 
 
     // 激活/禁用OpenGL模式
@@ -57,7 +49,7 @@ public:
     // 设置、获取视口
     // void UpdateViewport(int32_t width, int32_t height);
     // void GetViewport(int32_t* width, int32_t* height);
-    void SetViewport(int32_t width, int32_t height);
+    void SetViewport(int32_t x, int32_t y, int32_t width, int32_t height);
 
 
     // 清理缓冲区
@@ -65,12 +57,12 @@ public:
 
 
     // 设置顶点属性、顶点属性的索引、实例矩阵数据
-    uint32_t GetPrimitiveType(n_GIECore::MeshType MeshType);
-    uint32_t GetVertexDataType(n_GIECore::VertexDataType dataType);
+    uint32_t GetPrimitiveType(MeshType MeshType);
+    uint32_t GetVertexDataType(VertexDataType dataType);
 
 
     // 顶点数组对象（Vertex Array Object, VAO）
-    uint32_t CreateVertexArray(std::shared_ptr<n_GIECore::ShaderProgram> pShader, std::shared_ptr<n_GIECore::Model> pRenderModel);
+    uint32_t CreateVertexArray(std::shared_ptr<ShaderProgram> pShader, std::shared_ptr<Model> pRenderModel);
     // uint32_t CreateHighlightVertexAttrsArray(std::shared_ptr<Shader> pShader, std::shared_ptr<Model> pRenderModel);
     void BindVAO(uint32_t vao);
     void DestroyVertexArray();
@@ -94,13 +86,13 @@ public:
 
 
     // 遍历绑定信息，设置绑定数据的内存访问信息
-    void SetVertexBuffer(std::shared_ptr<n_GIECore::ShaderProgram> pShader, std::map<std::string, n_GIECore::BufferLayout> bufferLayout);
-    void SetInstanceBuffer(std::shared_ptr<n_GIECore::ShaderProgram> pShader, n_GIECore::BufferLayout instanceInfo);
+    void SetVertexBuffer(std::shared_ptr<ShaderProgram> pShader, std::map<std::string, BufferLayout> bufferLayout);
+    void SetInstanceBuffer(std::shared_ptr<ShaderProgram> pShader, BufferLayout instanceInfo);
 
 
     // Uniform Block数据
     uint32_t CreateUniformBlock(uint32_t index, size_t bufferSize, float* buffer);
-    void SetUniformBlock(uint32_t program, std::string name, uint32_t index);
+    void SetUniformBlock(uint32_t shaderProgram, std::string name, uint32_t index);
 
     // C++模板的定义是否只能放在头文件中：https://blog.csdn.net/imred/article/details/80261632
     template<typename T>
@@ -131,7 +123,7 @@ public:
 
 
     // 纹理贴图
-    uint32_t OpenGLRenderContext::CreateTexture(n_GIECore::TextureImage& textureImage);
+    uint32_t OpenGLRenderContext::CreateTexture(TextureImage& textureImage);
     void ActiveTexture(uint32_t textureUint);
     void BindTexture(uint32_t textureHandle);
     void DeactiveTexture();
@@ -158,7 +150,42 @@ public:
     int32_t GetUniformLocation(uint32_t program, std::string name);
 
     template <typename T>
-    void SetUniformData(uint32_t program, std::string name, n_GIECore::UniformDataType dataType, std::vector<T> values);
+    void SetUniformData(uint32_t program, std::string name, UniformDataType dataType, std::vector<T> values)
+    {
+        switch (dataType)
+        {
+            case UniformDataType::BOOL:
+                // GLSL中4字节对齐, 因此GLSL中的bool比变量, 传递JS中的int值即可
+                glUniform1i(GetUniformLocation(program, name), (int32_t)values.data());
+                break;
+            case UniformDataType::INT:
+                glUniform1i(GetUniformLocation(program, name), (int32_t)values.data());
+                break;
+            case UniformDataType::FLOAT:
+                glUniform1f(GetUniformLocation(program, name), *(float *)values.data());
+                break;
+            case UniformDataType::VEC2:
+                glUniform2fv(GetUniformLocation(program, name), values.size(), values.data());
+                break;
+            case UniformDataType::VEC3:
+                glUniform3fv(GetUniformLocation(program, name), values.size(), values.data());
+                break;
+            case UniformDataType::VEC4:
+                glUniform4fv(GetUniformLocation(program, name), values.size(), values.data());
+                break;
+            case UniformDataType::MAT2:
+                glUniformMatrix2fv(GetUniformLocation(program, name), false, values.data());
+                break;
+            case UniformDataType::MAT3:
+                glUniformMatrix3fv(GetUniformLocation(program, name), false, values.data());
+                break;
+            case UniformDataType::MAT4:
+                glUniformMatrix4fv(GetUniformLocation(program, name), false, values.data());
+                break;
+            default:
+                break;
+        }
+    }
     
     // template <typename T>
     // T GetUniformData(uint32_t program, std::string name);
@@ -167,10 +194,10 @@ public:
 
 
     // 绘制模型（图元）
-    void Draw(std::shared_ptr<n_GIECore::Model> pRenderModel);
+    void Draw(std::shared_ptr<Model> pRenderModel);
 
 private:
-    GLFWwindow* m_Window;
+    Window* m_Window;
 
 protected:
     void GetContext();

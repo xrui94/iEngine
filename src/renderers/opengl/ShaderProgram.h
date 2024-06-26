@@ -8,6 +8,13 @@
 
 namespace n_GIECore
 {
+    struct ShaderCom
+    {
+        uint32_t VertShader;
+        uint32_t FragShader;
+        uint32_t GeomShader;
+    };
+
     class ShaderProgram
     {
     public:
