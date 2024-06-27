@@ -149,7 +149,7 @@
         initOpts.containerId = "glfw-wgpu";
         initOpts.width = 960;
         initOpts.height = 640;
-        initOpts.usingOffscreenCanvas = true;
+        initOpts.usingOffscreenCanvas = false;  // It is not working, while initOpts.usingOffscreenCanvas = true (That means using multi-thread rendering.)
         Engine& engine = Engine::GetInstance(initOpts);
 
         // 创建一个Mesh

@@ -1,25 +1,27 @@
 #pragma once
 
-#include "RenderingContext.h"
-
-#include "Shader.h"
 #include "Enum.h"
+#include "Shader.h"
 #include "ShaderProgram.h"
-#include "TextureImage.h"
-#include "Model.h"
+#include "textures/TextureImage.h"
+#include "core/Model.h"
+#include "windows/Window.h"
+
+#ifdef IE_GLFW_WINDOW
+	#include <GLFW/glfw3.h>
+#elif defined(IE_HTML_WINDOW)
+	// #include "HtmlWindow.h"
+	class HtmlWindow;
+#endif
 
 
-struct GLFWwindow;
-
-
-
-class OpenGLRenderContext : public RenderingContext
+class OpenGLContext
 {
 public:
-    OpenGLRenderContext::OpenGLRenderContext(Window* window);
+    OpenGLContext(Window* window);
 
     // bool Init() override;
-    void SwapBuffers() override;
+    void SwapBuffers();
     // void Destroy() override;
 
 
@@ -123,7 +125,7 @@ public:
 
 
     // 纹理贴图
-    uint32_t OpenGLRenderContext::CreateTexture(TextureImage& textureImage);
+    uint32_t CreateTexture(TextureImage& textureImage);
     void ActiveTexture(uint32_t textureUint);
     void BindTexture(uint32_t textureHandle);
     void DeactiveTexture();

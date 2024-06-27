@@ -121,6 +121,7 @@ else()
         INCLUDE_DIRECTORIES(
             ${CMAKE_SOURCE_DIR}/src
             ${THIRD_PARTY_DIR}
+            ${THIRD_PARTY_DIR}/glad/include
         )
 
         message(STATUS "Downloading deps for dawn: glfw, webgpu and webgpu_glfw ...")
@@ -164,6 +165,7 @@ else()
     # 删除不需要编译的源文件
      FILE(GLOB_RECURSE SRC_FILES
         ${CMAKE_SOURCE_DIR}/src/*.cpp
+        ${THIRD_PARTY_DIR}/glad/src/glad.c
     )
 
     # 删除不需要编译的源文件

@@ -2,8 +2,15 @@
 
 
 #include "Enum.h"
+#include "VertexAttrs.h"
 #include "materials/Material.h"
 #include "textures/Texture.h"
+#include "renderers/opengl/ShaderProgram.h"
+
+#include <string>
+#include <vector>
+#include <map>
+#include <memory>
 
 // 三维模型的数据结构抽象，同时也是渲染引擎标准的数据结构
 // 所有数据都应按该Model类的数据结构来解析读取

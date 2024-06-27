@@ -1,5 +1,7 @@
 #include "Model.h"
 
+#include <iostream>
+
 Model::Model() : m_MeshType(MeshType::MT_UNKNOWN)
 {
 }
@@ -73,12 +75,27 @@ bool Model::HasInstances()
 
 uint32_t Model::GetIndicesCount()
 {
-    return m_Indices.size() / sizeof(uint16_t);
+    if (m_Indices.size() % 2 != 0)
+    {
+        std::cerr << "Invalid indice data. It must be a multiple of 2." << std::endl;
+    }
+    return static_cast<uint32_t>(m_Indices.size() / sizeof(uint16_t));
 }
     
 uint32_t Model::GetInstancesCount()
 {
-    return m_Instances.size() / sizeof(float) / 16;
+    // 确保数据量足够且是偶数  
+    if (m_Instances.size() % 2 != 0)
+    {
+        std::cerr << "Invalid instance data. It must be a multiple of 2." << std::endl;
+    }
+
+    if (m_Instances.size() % 2 % 16 != 0)
+    {
+        std::cerr << "Invalid instance data. It must be a multiple of 16." << std::endl;
+    }
+
+    return static_cast<uint32_t>(m_Instances.size() / sizeof(float) / 16);
 }
 
 uint32_t Model::GetVerticesCount()
