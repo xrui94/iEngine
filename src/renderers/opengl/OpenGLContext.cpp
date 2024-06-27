@@ -1,16 +1,13 @@
-std::shared_ptr<RenderingContext> RenderingContext::Create(void* window)
-{
-    return std::make_shared<OpenGLContext>(static_cast<GLFWwindow*>(window));
-}
-
-#include <iostream>
+#include "OpenGLContext.h"
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-#include "OpenGLContext.h"
+#include <iostream>
 
-
+// 由于CMake中的编译设置，使用：(void *)int32Var语法时，会触发如下错误：
+// error C2220: 以下警告被视为错误：warning C4312: “类型强制转换”: 从“uint32_t”转换到更大的“void *”
+#pragma warning(disable: 4312)  
 
 OpenGLContext::OpenGLContext(Window* window)
     : m_Window(window)
@@ -34,7 +31,8 @@ OpenGLContext::OpenGLContext(Window* window)
 void OpenGLContext::SwapBuffers()
 {
     // glfwPollEvents();
-    glfwSwapBuffers(m_Window);
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
+    glfwSwapBuffers(glfwWindow);
 }
 
 // void OpenGLContext::Destroy()
@@ -170,7 +168,7 @@ void OpenGLContext::BindVAO(uint32_t vao)
     glBindVertexArray(vao);
 }
 
-uint32_t OpenGLContext::CreateVertexArray(std::shared_ptr<nShaderProgram> pShader, std::shared_ptr<Model> pRenderModel)
+uint32_t OpenGLContext::CreateVertexArray(std::shared_ptr<ShaderProgram> pShader, std::shared_ptr<Model> pRenderModel)
 {
     uint32_t vao = 99999;
     glCreateVertexArrays(1, &vao);
@@ -630,7 +628,7 @@ void OpenGLContext::UseProgram(uint32_t program)
 
 uint32_t OpenGLContext::MakeProgram(const std::string vertCode, const std::string fragCode)
 {
-    ShaderCom shaderCom;
+    ShaderCom shaderCom{};
     CompileShader(vertCode, fragCode, "", shaderCom);
     uint32_t program = glCreateProgram();
     glAttachShader(program, shaderCom.VertShader);
@@ -737,3 +735,6 @@ void OpenGLContext::Draw(std::shared_ptr<Model> pRenderModel)
     // 取消当前VAO的绑定
     // glBindVertexArray(null);
 }
+
+
+#pragma warning(default: 4312) // 恢复警告

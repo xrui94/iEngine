@@ -11,6 +11,18 @@
 #include <string>
 
 
+struct BufferLayout
+{
+    std::string Name;
+    uint32_t Location;
+    uint32_t Count;
+    uint32_t Batch;
+    uint8_t DataType;
+    bool Normalized;
+    uint32_t Offset;
+    uint32_t Stride;
+};
+
 /**
  * A structure that describes the data layout in the vertex buffer
  * We do not instantiate it but use it in `sizeof` and `offsetof`
