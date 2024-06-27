@@ -1,7 +1,7 @@
 #include "WebGPUDevice.h"
 
 #ifdef IE_HTML_WINDOW
-	#include "../../windows/HtmlWindow.h"
+	#include "windows/HtmlWindow.h"
 #endif
 
 #include <iostream>
