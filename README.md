@@ -15,8 +15,15 @@
 
 - **Using Dawn backend**
 
+First, execute the following command to pull the code of the third-party dependency library.
+
 ```
 git submodule update --init
+```
+
+Then, execute the following commands in order to create the build directory, generate a *.sln project files, and compile the code.
+
+```
 mkdir build
 cd build
 cmake ..
@@ -24,6 +31,8 @@ cmake --build .
 ```
 
 - **Using WGPU-Native backend**
+
+Just execute the following command.
 
 ```ps
 mkdir build
