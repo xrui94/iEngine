@@ -9,24 +9,26 @@
 // error C2220: 以下警告被视为错误：warning C4312: “类型强制转换”: 从“uint32_t”转换到更大的“void *”
 #pragma warning(disable: 4312)  
 
-OpenGLContext::OpenGLContext(Window* window)
-    : m_Window(window)
+OpenGLContext::OpenGLContext()
+    : m_Window{ nullptr }
 {
 }
 
-// bool OpenGLContext::Init()
-// {
-//     // Create opengl graphics context
-//     glfwMakeContextCurrent(m_Window);
+bool OpenGLContext::Init(Window* window)
+{
+    m_Window = window;
 
-//     // glad: load all OpenGL function pointers，注册glad函数地址
-//     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-//     {
-//         std::cerr << "Failed to initialize GLAD" << std::endl;
-//     }
+    // Create opengl graphics context
+    // glfwMakeContextCurrent(m_Window);
 
-//     return true;
-// }
+    // glad: load all OpenGL function pointers，注册glad函数地址
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+    }
+
+    return true;
+}
 
 void OpenGLContext::SwapBuffers()
 {

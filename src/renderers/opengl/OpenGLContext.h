@@ -20,7 +20,7 @@ class OpenGLContext
 public:
     OpenGLContext(Window* window);
 
-    // bool Init() override;
+    bool Init();
     void SwapBuffers();
     // void Destroy() override;
 

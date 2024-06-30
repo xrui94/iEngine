@@ -161,6 +161,85 @@ void Mesh::Destroy()
 #endif
 }
 
+bool Mesh::HasIndices()
+{
+    // m_Indices.size() > 0 ? return true : return false;
+    if (m_Indices.size() > 0) return true;
+    else return false;
+}
+
+bool Mesh::HasInstances()
+{
+    // m_Instances.size() > 0 ? return true : return false;
+    if (m_Instances.size() > 0) return true;
+    else return false;
+}
+
+uint32_t Mesh::GetVertexCount()
+{
+    return 0;
+}
+
+uint32_t Mesh::GetIndexCount()
+{
+    if (m_Indices.size() % 2 != 0)
+    {
+        std::cerr << "Invalid indice data. It must be a multiple of 2." << std::endl;
+    }
+    return static_cast<uint32_t>(m_Indices.size() / sizeof(uint16_t));
+}
+
+uint32_t Mesh::GetInstanceCount() const 
+{
+    // 确保数据量足够且是偶数  
+    if (m_Instances.size() % 2 != 0)
+    {
+        std::cerr << "Invalid instance data. It must be a multiple of 2." << std::endl;
+    }
+
+    if (m_Instances.size() % 2 % 16 != 0)
+    {
+        std::cerr << "Invalid instance data. It must be a multiple of 16." << std::endl;
+    }
+
+    return static_cast<uint32_t>(m_Instances.size() / sizeof(float) / 16);
+}
+
+std::map<std::string, BufferLayout>& Mesh::GetVertexAttrInfo()
+{
+    return m_VertexAttrInfo;
+}
+
+BufferLayout& Mesh::GetInstanceInfo()
+{
+    return m_InstanceInfo;
+}
+
+uint32_t Mesh::GetVAO(std::string handle)
+{
+    return m_VAO[handle];
+}
+
+void Mesh::SetVAO(std::string handle, uint32_t* bufferObj)
+{
+    m_VAO[handle] = *bufferObj;
+}
+
+void Mesh::SetVBO(std::string handle, uint32_t* bufferObj)
+{
+    m_VBO[handle] = *bufferObj;
+}
+
+void Mesh::SetEBO(std::string handle, uint32_t* bufferObj)
+{
+    m_EBO[handle] = *bufferObj;
+}
+
+void Mesh::SetIBO(std::string handle, uint32_t* bufferObj)
+{
+    m_IBO[handle] = *bufferObj;
+}
+
 void Mesh::UpdateBindGroup(std::vector<ResourceBindGroup>& resourceBindGroups)
 {
     for (const ResourceBindGroup& item : resourceBindGroups)
@@ -216,9 +295,9 @@ void Mesh::CreateBuffer(std::vector<float> vertexBuffer, std::vector<uint32_t> i
         vertexAttrs[i].offset = vertexAttrInfos[i].offset;
     }
 
-    auto vertexBufferLayout = WebGPUDevice::Get().CreateVertexBufferLayout(vertexAttrs);
-    m_GPUVertexBuffer = WebGPUDevice::Get().CreateVertexBuffer(vertexBuffer, "vertexAttr");
-    m_GPUIndexBuffer = WebGPUDevice::Get().CreateIndexBuffer(indexBuffer, "indices");
+    auto vertexBufferLayout = WebGPUDevice::Get().CreateVertexBufferLayout(vertexAttrs);    // 相当于vao
+    m_GPUVertexBuffer = WebGPUDevice::Get().CreateVertexBuffer(vertexBuffer, "vertexAttr"); // 相当于vbo
+    m_GPUIndexBuffer = WebGPUDevice::Get().CreateIndexBuffer(indexBuffer, "indices");       // 相当于ebo
 
     // 创建节点Uniform，相当于当前模型的变换矩阵
     m_NodeUniformBuffer = WebGPUDevice::Get().CreateUniformBuffer<NodeUniforms>("NodeUniforms");

@@ -22,7 +22,7 @@ struct EngineInitOpts
     std::string containerId;
     uint32_t width;
     uint32_t height;
-    // std::string backend = "webgpu";
+    std::string backend = "webgpu";
     bool usingOffscreenCanvas = true;
     // bool customCanvas = false;
     std::string canvasId = "#xr-main-canvas";

@@ -63,4 +63,6 @@ private:
     std::unique_ptr<Renderer> m_Renderer;
 
     std::vector<std::shared_ptr<Mesh>> m_Meshes;
+
+    std::vector<std::shared_ptr<Model>> m_Models;
 };

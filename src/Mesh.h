@@ -17,6 +17,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <map>
+#include <unordered_map>
 
 struct ResourceBindGroup
 {
@@ -54,8 +55,56 @@ public:
 public:
     void Destroy();
 
-    uint32_t GetVertexCount() const { return m_VertexCount; }
+public:
+    MeshType GetMeshType() const { return m_MeshType; }
 
+    std::vector<uint8_t>& GetBBox() const { return m_BBox; }
+    // std::vector<float>& GetBBox() { return m_BBox; }
+
+    bool HasIndices() const;
+
+    bool HasInstances() const;
+
+    uint32_t GetVertexCount() const;
+
+    uint32_t GetIndexCount() const;
+
+    uint32_t GetInstanceCount() const;
+
+    bool IsPrepared() const { return m_IsPrepared; }
+
+    // 顶点属性数据
+    void SetVertexAttrsInfo(std::map<std::string, BufferLayout>& vertexAttrsInfo) { m_VertexAttrsInfo = vertexAttrsInfo; }
+    std::map<std::string, BufferLayout>& GetVertexAttrsInfo();
+
+    std::vector<uint8_t>& GetVertexAttrs() { return m_VertexAttrs;  }
+    // std::vector<float>& GetVertexAttributes() { return m_VertexAttrs; }
+
+    // 索引数据
+    std::vector<uint8_t>& GetIndices() { return m_Indices; }
+    // std::vector<uint16_t>& GetIndices() { return m_Indices; }
+    void SetIndices(std::vector<uint8_t>& indices) { m_Indices = indices; }
+
+    // 顶点属性实例矩阵
+    void SetInstancesInfo(BufferLayout& instancesInfo) { m_InstancesInfo = instancesInfo; }
+    BufferLayout& GetInstanceInfo();
+
+    std::vector<uint8_t>& GetInstances() { return m_Instances; }
+    // std::vector<float>& GetInstances() { return m_Instances; }
+    void SetInstances(std::vector<uint8_t>& instances) { m_Instances = instances; }
+    
+    // OpenGL对象Getter和Setter
+    uint32_t GetVAO(std::string handle);
+
+    void SetVAO(std::string handle, uint32_t* bufferObj);
+
+    void SetVBO(std::string handle, uint32_t* bufferObj);
+
+    void SetEBO(std::string handle, uint32_t* bufferObj);
+
+    void SetIBO(std::string handle, uint32_t* bufferObj);
+
+    // WebGPU对象Getter和Setter
     wgpu::RenderPipeline GetPipeline() const { return m_Pipeline; }
 
     wgpu::Buffer GetVertexBuffer() const { return m_GPUVertexBuffer; }
@@ -68,11 +117,7 @@ public:
 
     std::map<std::string, BindGroupData>& GetBindGroups() { return m_BindGroups; }
 
-    uint32_t GetIndexCount() const { return m_IndexCount; }
-
     wgpu::ShaderModule GetShader() const { return m_Shader->GetShaderModule(); }
-
-    bool IsPrepared() const { return m_IsPrepared; }
 
     void UpdateBindGroup(std::vector<ResourceBindGroup>& resourceBindGroup);
 
@@ -86,19 +131,42 @@ private:
     void BuildShader();
 
 private:
-    std::vector<VertexAttrInfo> m_VertexAttrInfos;
+    MeshType m_MeshType;
+
+    // boungding box
+    std::vector<uint8_t> m_BBox;
 
     uint32_t m_VertexCount;
 
     uint32_t m_IndexCount;
 
+    uint32_t m_InstanceCount;
+
+    std::vector<VertexAttrInfo> m_VertexAttrInfos;
+
     std::vector<VertexAttrs> m_VertexVec3f;
+
+    std::vector<uint8_t> m_VertexAttrs;
 
     std::vector<float> m_VertexBuffer;
 
     std::vector<uint32_t> m_IndexBuffer;
 
-    //
+    std::vector<uint8_t> m_Indices;
+
+    std::vector<uint8_t> m_Instances;
+
+    // OpenGL渲染属性数据Buffer
+    std::unordered_map<std::string, uint32_t> m_VAO;  // vao
+    std::unordered_map<std::string, uint32_t> m_VBO;  // 顶点数据Buffer
+    std::unordered_map<std::string, uint32_t> m_EBO;  // 顶点索引数据Buffer
+    std::unordered_map<std::string, uint32_t> m_IBO;  // 顶点属性实例矩阵数据Buffer
+
+    std::unordered_map<std::string, BufferLayout> m_VertexAttrInfo;
+    
+    BufferLayout m_InstanceInfo;
+
+    // WebGPU渲染属性数据Buffer
     wgpu::Buffer m_GPUVertexBuffer;
 
     wgpu::Buffer m_GPUIndexBuffer;
@@ -113,6 +181,7 @@ private:
 
     wgpu::RenderPipeline m_Pipeline;
 
+    // 着色器
     std::unique_ptr<iEngine::ShaderModule> m_Shader;
 
     bool m_IsPrepared;
