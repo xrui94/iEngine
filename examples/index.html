@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web 3D实时渲染引擎（引擎架构测试）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #222;
+        }
+        #glCanvas {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 0;
+        }
+        .toolbar {
+            position: absolute;
+            left: 0;
+            top: 60px; /* 避开标题栏 */
+            width: 56px;
+            height: calc(100vh - 60px);
+            background: rgba(30, 30, 30, 0.6);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .toolbar button {
+            width: 40px;
+            height: 40px;
+            margin: 8px 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(80, 80, 80, 0.7);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            transition: background 0.2s;
+        }
+        .toolbar button.active {
+            background: #2196f3;
+        }
+        .toolbar button:hover {
+            background: #1976d2;
+        }
+        .toolbar hr {
+            width: 80%;
+            border: 0;
+            border-top: 1px solid #444;
+            margin: 12px 0;
+        }
+        .titlebar {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 60px;
+            background: rgba(40, 40, 40, 0.7);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 3;
+            letter-spacing: 2px;
+            user-select: none;
+        }
+        .outline-panel {
+            position: absolute;
+            right: 0; top: 60px;
+            width: 260px;
+            height: calc(100vh - 60px);
+            background: rgba(30, 30, 30, 0.6);
+            z-index: 2;
+            padding: 16px 8px;
+            overflow-y: auto;
+        }
+        .outline-title {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .tree {
+            color: #fff;
+            font-size: 15px;
+            list-style: none;
+            padding-left: 0;
+        }
+        .tree, .tree ul, .tree ol {
+            list-style: none;
+            padding-left: 0;
+            margin-left: 0;
+        }
+        .tree li {
+            margin-bottom: 6px;
+            padding-left: 14px; /* 稍微大一点，避免和蓝点重叠 */
+            position: relative;
+        }
+        .tree li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #2196f3;
+            font-size: 18px;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="glCanvas" tabindex="0"></canvas>
+    <div class="titlebar">
+        Web 3D实时渲染引擎（引擎架构测试）
+    </div>
+    <div class="toolbar">
+        <button id="btn-webgl" title="WebGL渲染器"><span class="material-icons">memory</span></button>
+        <button id="btn-webgpu" title="WebGPU渲染器"><span class="material-icons">developer_board</span></button>
+        <hr>
+        <button id="btn-orbit" title="轨道控制器"><span class="material-icons">360</span></button>
+        <button id="btn-fps" title="第一人称控制器"><span class="material-icons">person</span></button>
+    </div>
+    <div class="outline-panel">
+        <div class="outline-title">世界大纲</div>
+        <ul id="model-tree" class="tree">
+            <!-- 动态插入模型节点 -->
+        </ul>
+    </div>
+    <script type="module">
+        import iEngine from '../dist/iengine.js'
+
+        /**
+         * 创建一个红色的三角形模型
+         */
+        function createTriangle() {
+            // 添加triangle
+            const triangleMesh = new iEngine.Mesh(
+                new iEngine.Triangle(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.TRIANGLES,
+                    // {
+                    //     name: 'aPosition',
+                    //     size: 3,
+                    //     type: WebGLRenderingContext.FLOAT,
+                    //     normalized: false,
+                    //     stride: 12,
+                    //     offset: 0,
+                    // },
+
+                    {
+                        arrayStride: 12,
+                        attributes: [
+                            {
+                                name: 'aPosition',
+                                format: 'float32x3',
+                                offset: 0,
+                                shaderLocation: 0
+                            }
+                        ]
+                    },
+                )
+            );
+
+            //
+            const material = new iEngine.BaseMaterial({
+                shaderName: 'base_material'
+            });
+            material.setColor(1.0, 0.0, 0.0); // 红色
+
+            //
+            const triangleModel = new iEngine.Model('Triangle', triangleMesh, material);
+
+            // // 添加一个自转动画
+            // triangleModel.addAnimation((m, dt) => {
+            //     m.rotate(new Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
+            // });
+
+            // this.addComponent(triangleModel);
+            return triangleModel;
+        }
+
+        /**
+         * 创建一个立方体模型
+         */
+        function createCube() {
+            // 添加Cube
+            const cubeMesh = new iEngine.Mesh(
+                new iEngine.Cube(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.TRIANGLES,
+                    // [
+                    //     {
+                    //         name: 'aPosition',
+                    //         size: 3,
+                    //         type: WebGLRenderingContext.FLOAT,
+                    //         normalized: false,
+                    //         stride: 12,
+                    //         offset: 0,
+                    //     },
+                    //     {
+                    //         name: 'aNormal',
+                    //         size: 3,
+                    //         type: WebGLRenderingContext.FLOAT,
+                    //         normalized: false,
+                    //         stride: 12,
+                    //         offset: 0,
+                    //     },
+                    // ]
+                )
+            );
+
+            //
+            // const cubeMaterial = new BaseMaterial('base_material');
+            // cubeMaterial.setColor(0.0, 0.5, 1.0); // 蓝色
+
+            const cubeMaterial = new iEngine.PbrMaterial({
+                shaderName: 'base_pbr',
+                baseColor: new iEngine.Color(1.0, 1.0, 1.0),
+                baseColorMap: '../assets/textures/Wood048_1K-PNG/Wood048_1K-PNG_Color.png',
+                // baseColorMap: '../assets/textures/building-facade-windows_256x256.jpg',
+                // baseColorMap: '../assets/textures/Metal001_1K-PNG/Metal001_1K-PNG_Color.png',
+                metallic: 0.8,
+                roughness: 0.02
+            });
+
+            //
+            const cubeModel = new iEngine.Model('Cube', cubeMesh, cubeMaterial);
+            
+            // 添加一个自转动画
+            // cubeModel.addAnimation((m, dt) => {
+            //     m.rotate(new iEngine.Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
+            // });
+            
+            // this.addComponent(cubeModel);
+            return cubeModel;
+        }
+
+        /**
+         * 创建一个黄色线框立方体模型
+         */
+        function createWireframeCube() {
+            // 添加Wireframe Cube
+            const wireframeCubeMesh = new iEngine.Mesh(
+                new iEngine.Cube(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.LINES,
+                    // [
+                    //     {
+                    //         name: 'aPosition',
+                    //         size: 3,
+                    //         type: WebGLRenderingContext.FLOAT,
+                    //         normalized: false,
+                    //         stride: 12,
+                    //         offset: 0,
+                    //     },
+                    // ]
+                )
+            );
+            
+            // 创建一个黄色线框材质
+            const wireframeMaterial = new iEngine.BaseMaterial({
+                shaderName: 'base_material'
+            });
+            wireframeMaterial.setColor(1.0, 1.0, 0.0); // 黄色
+            
+            //
+            const wireframeCubeModel = new iEngine.Model('CubeWireframe', wireframeCubeMesh, wireframeMaterial);
+            
+            // 添加一个自转动画
+            // wireframeCubeModel.addAnimation((m, dt) => {
+            //     m.rotate(new Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
+            // });
+            
+            // this.addComponent(wireframeCubeModel);
+            return wireframeCubeModel;
+        }
+
+
+        // 初始化引擎
+        const engine = new iEngine.Engine({
+            renderer: 'webgpu',
+        });
+
+        // 创建场景
+        const canvas = document.getElementById('glCanvas');
+        const scene = new iEngine.Scene(canvas, {
+            useWebGL1: true, // 默认使用 WebGL2 渲染器
+            attrs: {
+                antialias: true, // 开启抗锯齿
+                alpha: true, // 开启透明背景
+            }
+        });
+
+        // 创建相机
+        const camera = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
+        camera.setPosition(0, 0, 5);
+        camera.lookAt(0, 0, 0);
+        // 设置场景的相机
+        scene.activeCamera = camera;
+
+        // 创建相机的控制器
+        let controls = new iEngine.OrbitControls(camera, canvas);
+
+        // 添加光源
+        scene.addLight(new iEngine.AmbientLight({
+            color: new iEngine.Color(0.3, 0.3, 0.3)
+        })); // 添加环境光
+        scene.addLight(new iEngine.DirectionalLight({
+            color: new iEngine.Color(1.0, 1.0, 1.0),
+            intensity: 5.0
+        })); // 添加平行光照
+
+        // 添加模型
+        // const triangle = scene.createTriangle();
+        // const cube = scene.createCube();
+        // const wireCube = scene.createWireframeCube();
+        // scene.addComponent(triangle);
+        // scene.addComponent(cube);
+        // scene.addComponent(wireCube);
+        //
+        scene.addComponent(createTriangle());
+        scene.addComponent(createCube());
+        scene.addComponent(createWireframeCube());
+
+        // 将场景添加到引擎
+        engine.addScene('default-simple-scene', scene);
+
+        // 启动引擎
+        await engine.start();
+
+
+        // ---------- 以下为业务代码 ----------
+
+
+        // 工具栏按钮事件
+        document.getElementById('btn-webgl').onclick = async () => {
+            await engine.setRenderer('webgl');
+            document.getElementById('btn-webgl').classList.add('active');
+            document.getElementById('btn-webgpu').classList.remove('active');
+        };
+        document.getElementById('btn-webgpu').onclick = async () => {
+            await engine.setRenderer('webgpu');
+            document.getElementById('btn-webgpu').classList.add('active');
+            document.getElementById('btn-webgl').classList.remove('active');
+        };
+        document.getElementById('btn-orbit').onclick = () => {
+            if (controls && controls.dispose) controls.dispose();
+            controls = new iEngine.OrbitControls(camera, canvas);
+            document.getElementById('btn-orbit').classList.add('active');
+            document.getElementById('btn-fps').classList.remove('active');
+        };
+        document.getElementById('btn-fps').onclick = () => {
+            if (controls && controls.dispose) controls.dispose();
+            controls = new iEngine.FirstPersonControls(camera, canvas);
+            document.getElementById('btn-fps').classList.add('active');
+            document.getElementById('btn-orbit').classList.remove('active');
+        };
+
+        // 世界大纲树组件
+        const componentTree = document.getElementById('model-tree');
+        function renderComponentlTree(node) {
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            li.textContent = node.name || node.constructor.name;
+            ul.appendChild(li);
+
+            if (typeof node.getComponents === 'function') {
+                const components = node.getComponents();
+                components?.forEach(comp => {
+                    li.appendChild(renderComponentlTree(comp));
+                });
+            }
+           
+            return ul;
+        }
+
+        function updateComponentTree() {
+            componentTree.innerHTML = '';
+            componentTree.appendChild(renderComponentlTree(scene));
+        }
+
+        //
+        updateComponentTree();
+
+        // 假设你有 addComponent/removeComponent 事件，可以这样监听并更新大纲
+        const origAdd = scene.addComponent.bind(scene);
+        scene.addComponent = function(comp) {
+            origAdd(comp);
+            updateModelTree();
+        };
+        const origRemove = scene.removeComponent?.bind(scene);
+        if (origRemove) {
+            scene.removeComponent = function(comp) {
+                origRemove(comp);
+                updateModelTree();
+            };
+        }
+    </script>
+</body>
+</html>
