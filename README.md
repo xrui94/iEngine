@@ -1,117 +1,18 @@
-# iEngine-web
-iEngine for web(Test engine architecture). A tiny real-time graphics rendering engine based on webgl and webgpu.
+# iEngine
 
-**Note**: The main purpose of this project is to test the architecture design of the engine. In the future, this project and Project [iEngine](https://github.com/xrui94/iEngine) will use a unified engine architecture design
+A lightweight real-time graphics rendering engine with a unified architecture across native and web platforms.
 
-![demo1](imgs/demo1.png)
+- **iEngine-Native**: Core implementation in **C++17**, targeting desktop with **OpenGL** or **Dawn** (WebGPU).  
+  In the future, it will also be compiled to **WebAssembly** for web deployment.
 
+- **iEngine-Web**: A **pure TypeScript prototype** that reimplements key parts of the engine architecture **directly in the browser** using **WebGL 1/2** or **browser-native WebGPU**.  
+  This version does **not** use WebAssembly — it exists solely to rapidly validate and iterate on the engine’s design.
+
+> **Note**: iEngine-Web is a **design testbed**, not a production renderer. The long-term vision is to run the **single C++ codebase** (iEngine-Native) on both desktop and web via WebAssembly:
+>
+> - iEngine-Native will be compiled to **WebAssembly** via Emscripten, automatically mapping:
+>   - OpenGL → **WebGL 1/2**
+>   - Dawn (WebGPU) → **browser-native WebGPU**
+
+![demo1](imgs/demo1.png)  
 ![demo2](imgs/demo2.png)
-
-## Getting Start
-
-### Install Dependencies
-
-Run the following command in the repo folder (e.g. iEngine-web)
-
-```
-npm install
-```
-
-### Build Library
-
-For development environment (uncompressed, obfuscated code), Run:
-
-```
-npm run build-dev
-```
-
-For production environment，Run:
-
-```
-npm run build
-```
-
-Then, it will generate files at dist/
-
-- iengine.js
-- iengine.js.map
-- types/... (Some *.d.ts types of files (for debugging))
-
-### Run examples
-
-Firstly, open the iEngine-web project using VSCode.
-Then, open the "examples/index.html" file in VSCode.
-Last, run it using the **"Live Server"** (author: Ritwick Dey) plugin of VSCode.
-
-**Tip**: For more usage, please refer to the "examples/index.html" file.
-
-## TODO
-
-In the future, I will add the following designs:
-
-- SceneLayer
-- RenderLayer
-- RenderGraph
-- RenderPass
-  - DepthPass
-  - ShadowPass
-  - PostProcessing
-  - ...
-- ...
-
-Next, the general working logic of the engine will be updated as shown in the pseudocode below.
-
-```js
-Engine.frameLoop():
-  for scene of this.scenes:
-    renderer.render(scene)
-
-Renderer.render(scene):
-  const activeCamera = scene.activeCamera
-  const context = scene.activeContext
-  const renderGraph = scene.renderGraph
-
-  // 每帧更新 Scene → RenderLayer（包括视锥裁剪、RenderQueue 构建）
-  scene.updateRenderLayers()
-
-  // 执行渲染图（按 Pass 顺序调度）
-  renderGraph.execute(this, scene)
-
-Scene.updateRenderLayers():
-  for sceneLayer of this.sceneLayers:
-    if (sceneLayer.visible):
-      const renderLayers = sceneLayer.getRenderLayers()
-      for rl of renderLayers:
-        rl.collectRenderables() // 视锥裁剪 + push 到 RenderQueue
-
-RenderGraph.execute(renderer, scene):
-  for pass of this.passes:
-    pass.execute(renderer, scene)
-
-RenderPass.execute(renderer, scene):
-  context.beginRenderPass(...)
-
-  for renderLayer of scene.renderLayers:
-    if (renderLayer.supportsPass(this.passType)):
-      for renderable of renderLayer.renderQueue:
-        this.drawRenderableInPass(renderable, renderer, scene)
-
-  context.endRenderPass()
-
-RenderPass.drawRenderableInPass(renderable, renderer, scene):
-  const material = renderable.getMaterial()
-  const mesh = renderable.getMesh()
-
-  const passMaterial = material.getPassMaterial(this.passType)
-  const shader = ShaderLib.getOrCompile(passMaterial.shaderName, passMaterial.getDefines())
-  const pipeline = renderer.pipelineCache.getOrCreate(shader, passMaterial.getRenderState(), mesh.layout)
-
-  pipeline.bind(context)
-  mesh.uploadIfNeeded(context)
-
-  shader.setUniforms(passMaterial.getUniforms(renderable, scene.camera, scene.lights))
-  shader.setTextures(passMaterial.getTextures())
-
-  context.draw(mesh, passMaterial.drawMode)
-  pipeline.unbind?.()
-```
