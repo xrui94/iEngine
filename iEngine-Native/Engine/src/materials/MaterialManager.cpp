@@ -1,4 +1,4 @@
-#include "../../include/iengine/materials/MaterialManager.h"
+#include "iengine/materials/MaterialManager.h"
 
 #include <iostream>
 

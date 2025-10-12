@@ -1,5 +1,9 @@
-#include "../../include/iengine/shaders/ShaderLib.h"
-#include "../../include/iengine/shaders/ShaderPreprocessor.h"
+#include "iengine/shaders/ShaderLib.h"
+#include "iengine/shaders/ShaderPreprocessor.h"
+#include "iengine/shaders/glsl/BaseMaterialShader.h"
+#include "iengine/shaders/glsl/BasePhongShader.h"
+#include "iengine/shaders/glsl/BasePbrShader.h"
+#include "iengine/shaders/glsl/BaseWireframeShader.h"
 
 #include <algorithm>
 #include <sstream>
@@ -132,8 +136,43 @@ namespace iengine {
     }
 
     void ShaderLib::registerBuiltInShaders() {
-        // 在实际实现中，这里会注册内置着色器
-        // 由于这是一个示例，我们只提供框架
+        // 注册 base_material 着色器
+        std::shared_ptr<ShaderVariants> baseMaterial = std::make_shared<ShaderVariants>();
+        baseMaterial->webgl = std::make_shared<GLSLSource>();
+        baseMaterial->webgl->vertCode = BaseMaterialShader::vertex;
+        baseMaterial->webgl->fragCode = BaseMaterialShader::fragment;
+        baseMaterial->webgl->defines = std::make_shared<DefineMap>();
+        registerShader("base_material", baseMaterial);
+        
+        // 注册 base_wireframe 着色器
+        std::shared_ptr<ShaderVariants> baseWireframe = std::make_shared<ShaderVariants>();
+        baseWireframe->webgl = std::make_shared<GLSLSource>();
+        baseWireframe->webgl->vertCode = BaseWireframeShader::vertex;
+        baseWireframe->webgl->fragCode = BaseWireframeShader::fragment;
+        baseWireframe->webgl->defines = std::make_shared<DefineMap>();
+        registerShader("base_wireframe", baseWireframe);
+        
+        // 注册 base_phong 着色器
+        std::shared_ptr<ShaderVariants> basePhong = std::make_shared<ShaderVariants>();
+        basePhong->webgl = std::make_shared<GLSLSource>();
+        basePhong->webgl->vertCode = BasePhongShader::vertex;
+        basePhong->webgl->fragCode = BasePhongShader::fragment;
+        basePhong->webgl->defines = std::make_shared<DefineMap>();
+        basePhong->webgl->defines->defines["HAS_COLOR"] = "true";
+        registerShader("base_phong", basePhong);
+        
+        // 注册 base_pbr 着色器
+        std::shared_ptr<ShaderVariants> basePbr = std::make_shared<ShaderVariants>();
+        basePbr->webgl = std::make_shared<GLSLSource>();
+        basePbr->webgl->vertCode = BasePbrShader::vertex;
+        basePbr->webgl->fragCode = BasePbrShader::fragment;
+        basePbr->webgl->defines = std::make_shared<DefineMap>();
+        basePbr->webgl->defines->defines["HAS_BASECOLOR_MAP"] = "false";
+        basePbr->webgl->defines->defines["HAS_METALLIC_ROUGHNESS_MAP"] = "false";
+        basePbr->webgl->defines->defines["HAS_NORMAL_MAP"] = "false";
+        basePbr->webgl->defines->defines["HAS_AO_MAP"] = "false";
+        basePbr->webgl->defines->defines["HAS_EMISSIVE_MAP"] = "false";
+        registerShader("base_pbr", basePbr);
     }
 
     ShaderVariantKey ShaderLib::makeShaderVariantKey(const std::string& shaderName, const DefineMap& defines) {

@@ -1,4 +1,4 @@
-#include "../../include/iengine/materials/Color.h"
+#include "iengine/materials/Color.h"
 
 #include <algorithm>
 #include <cmath>

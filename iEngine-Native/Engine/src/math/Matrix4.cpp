@@ -1,5 +1,6 @@
-#include "../../include/iengine/math/Matrix4.h"
-#include "../../include/iengine/math/Vector3.h"
+#include "iengine/math/Matrix4.h"
+#include "iengine/math/Vector3.h"
+
 #include <cmath>
 #include <algorithm>
 

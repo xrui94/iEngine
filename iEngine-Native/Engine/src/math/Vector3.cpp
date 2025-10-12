@@ -1,4 +1,5 @@
-#include "../../include/iengine/math/Vector3.h"
+#include "iengine/math/Vector3.h"
+
 #include <cmath>
 
 namespace iengine {

@@ -1,4 +1,4 @@
-#include "../../include/iengine/core/Model.h"
+#include "iengine/core/Model.h"
 
 namespace iengine {
     Model::Model(const std::string& name, 

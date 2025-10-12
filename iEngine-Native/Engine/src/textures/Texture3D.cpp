@@ -1,4 +1,4 @@
-#include "../../include/iengine/textures/Texture3D.h"
+#include "iengine/textures/Texture3D.h"
 
 namespace iengine {
 

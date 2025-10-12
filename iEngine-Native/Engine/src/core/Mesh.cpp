@@ -1,4 +1,8 @@
-#include "../../include/iengine/core/Mesh.h"
+#include "iengine/core/Mesh.h"
+#include "iengine/renderers/Context.h"
+
+#include <iostream>
+#include <cstring>
 
 namespace iengine {
     Mesh::Mesh(std::shared_ptr<Geometry> geometry, std::shared_ptr<Primitive> primitive)
@@ -147,8 +151,109 @@ namespace iengine {
     void Mesh::upload(std::shared_ptr<Context> context, bool force) {
         if (uploaded && !force) return;
         
-        // 这里应该是实际的上传逻辑
-        // 由于这是框架代码，我们只设置标志
+        std::cout << "Uploading mesh to GPU..." << std::endl;
+        
+        // 1. 获取顶点布局
+        std::cout << "Getting vertex layout..." << std::endl;
+        VertexLayout layout = getVertexLayout();
+        std::cout << "Vertex layout created, stride: " << layout.arrayStride << std::endl;
+        
+        // 2. 构建交错缓冲区
+        std::cout << "Building interleaved buffer..." << std::endl;
+        std::vector<float> interleavedBuffer = buildInterleavedBuffer(layout);
+        std::cout << "Interleaved buffer size: " << interleavedBuffer.size() << " floats" << std::endl;
+        
+        // 3. 清理旧缓冲区
+        std::cout << "Cleaning old buffers..." << std::endl;
+        if (vbo) {
+            context->deleteBuffer(vbo);
+            vbo = nullptr;
+        }
+        if (ibo && !geometry->indices.empty()) {
+            context->deleteBuffer(ibo);
+            ibo = nullptr;
+        }
+        
+        // 4. 创建新缓冲区
+        std::cout << "Creating new buffers..." << std::endl;
+        if (!interleavedBuffer.empty()) {
+            std::cout << "Creating vertex buffer..." << std::endl;
+            vbo = context->createVertexBuffer(interleavedBuffer.size() * sizeof(float));
+            std::cout << "Writing vertex buffer data..." << std::endl;
+            context->writeBuffer(vbo, interleavedBuffer.data(), 
+                               interleavedBuffer.size() * sizeof(float), 0);
+            std::cout << "Vertex buffer created and written" << std::endl;
+        }
+        
+        if (!geometry->indices.empty()) {
+            std::cout << "Creating index buffer..." << std::endl;
+            ibo = context->createIndexBuffer(geometry->indices.size() * sizeof(unsigned int));
+            std::cout << "Writing index buffer data..." << std::endl;
+            context->writeBuffer(ibo, geometry->indices.data(), 
+                               geometry->indices.size() * sizeof(unsigned int), 0);
+            std::cout << "Index buffer created and written" << std::endl;
+        }
+        
         uploaded = true;
+        std::cout << "Mesh uploaded successfully. Vertices: " << geometry->vertexCount 
+                  << ", Indices: " << geometry->indexCount << std::endl;
+    }
+    
+    std::vector<float> Mesh::buildInterleavedBuffer(const VertexLayout& layout) const {
+        if (geometry->vertexCount == 0) {
+            return {};
+        }
+        
+        size_t strideInFloats = layout.arrayStride / sizeof(float);
+        std::vector<float> interleavedBuffer(geometry->vertexCount * strideInFloats, 0.0f);
+        
+        // 为每个顶点组装数据
+        for (size_t vertexIndex = 0; vertexIndex < geometry->vertexCount; ++vertexIndex) {
+            size_t bufferIndex = vertexIndex * strideInFloats;
+            
+            // 处理每个属性
+            for (const auto& attr : layout.attributes) {
+                size_t attrOffsetInFloats = attr.offset / sizeof(float);
+                
+                // 根据属性名称获取数据
+                const std::vector<float>* sourceData = nullptr;
+                size_t componentCount = 3; // 默认为float3
+                
+                if (attr.name == "aPosition") {
+                    sourceData = &geometry->vertices;
+                    componentCount = 3;
+                } else if (attr.name == "aNormal") {
+                    sourceData = &geometry->normals;
+                    componentCount = 3;
+                } else if (attr.name == "aTexCoord") {
+                    sourceData = &geometry->texCoords;
+                    componentCount = 2;
+                } else if (attr.name == "aColor0") {
+                    sourceData = &geometry->colors0;
+                    componentCount = 4;
+                } else if (attr.name == "aColor1") {
+                    sourceData = &geometry->colors1;
+                    componentCount = 4;
+                } else if (attr.name == "aTangent") {
+                    sourceData = &geometry->tangents;
+                    componentCount = 3;
+                } else if (attr.name == "aBitangent") {
+                    sourceData = &geometry->bitangents;
+                    componentCount = 3;
+                }
+                
+                // 复制数据
+                if (sourceData && !sourceData->empty()) {
+                    size_t sourceIndex = vertexIndex * componentCount;
+                    for (size_t i = 0; i < componentCount && i < 4; ++i) {
+                        if (sourceIndex + i < sourceData->size()) {
+                            interleavedBuffer[bufferIndex + attrOffsetInFloats + i] = (*sourceData)[sourceIndex + i];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return interleavedBuffer;
     }
 }

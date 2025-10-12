@@ -1,4 +1,4 @@
-#include "../../include/iengine/geometries/Cube.h"
+#include "iengine/geometries/Cube.h"
 
 namespace iengine {
     Cube::Cube(float size) : Geometry(

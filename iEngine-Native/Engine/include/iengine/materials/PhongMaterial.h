@@ -3,17 +3,13 @@
 #include "Material.h"
 #include "Color.h"
 #include <memory>
-#include <vector>
-#include <unordered_map>
-#include <string>
 
 namespace iengine {
     // 前向声明
     class Texture;
-    class UniformValue;
     
     struct PhongMaterialParams {
-        std::string name;
+        std::string name = "phong";
         std::string shaderName = "base_phong";
         Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);  // white
         Color specular = Color(1.0f, 1.0f, 1.0f, 1.0f);  // white
@@ -22,33 +18,28 @@ namespace iengine {
     
     class PhongMaterial : public Material {
     public:
-        Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);  // white
-        Color specular = Color(1.0f, 1.0f, 1.0f, 1.0f);  // white
+        Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);  // diffuse color
+        Color specular = Color(1.0f, 1.0f, 1.0f, 1.0f);  // specular color
         float shininess = 32.0f;
         
-        // 纹理成员变量
-        std::shared_ptr<Texture> diffuseTexture_;
-        std::shared_ptr<Texture> specularTexture_;
-        std::shared_ptr<Texture> normalTexture_;
-        std::shared_ptr<Texture> emissiveTexture_;
-        
         PhongMaterial(const PhongMaterialParams& params = PhongMaterialParams{});
-        ~PhongMaterial();
-        
-        // Getters
-        const Color& getDiffuse() const;
-        const Color& getSpecular() const;
-        float getShininess() const;
-        const Color& getEmissive() const;
+        virtual ~PhongMaterial() = default;
         
         // Setters
-        void setDiffuse(const Color& diffuse);
-        void setSpecular(const Color& specular);
+        void setColor(float r, float g, float b);
+        void setSpecular(float r, float g, float b);
         void setShininess(float shininess);
-        void setEmissive(const Color& emissive);
         
-        virtual std::vector<std::string> getShaderDefines() const;
-        virtual std::unordered_map<std::string, UniformValue> getUniforms() const;
-        virtual std::vector<std::shared_ptr<Texture>> getTextures() const;
+        // Material接口实现
+        std::map<std::string, bool> getShaderMacroDefines() const override;
+        std::map<std::string, UniformValue> getUniforms(
+            std::shared_ptr<Context> context,
+            std::shared_ptr<Camera> camera,
+            std::shared_ptr<Mesh> mesh,
+            const std::vector<std::shared_ptr<Light>>& lights) override;
+        TextureInfo getTextures() override;
+        
+        // 获取渲染管线状态
+        RenderPipelineState getRenderPipelineState() const;
     };
 }

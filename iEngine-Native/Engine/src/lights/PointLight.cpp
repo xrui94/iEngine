@@ -1,4 +1,4 @@
-#include "../../include/iengine/lights/PointLight.h"
+#include "iengine/lights/PointLight.h"
 
 namespace iengine {
 

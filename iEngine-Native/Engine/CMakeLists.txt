@@ -12,6 +12,7 @@ file(GLOB_RECURSE SCENES_FILES "src/scenes/*.cpp" "src/scenes/*.h" "src/scenes/*
 file(GLOB_RECURSE SHADERS_FILES "src/shaders/*.cpp" "src/shaders/*.h" "src/shaders/*.hpp")
 file(GLOB_RECURSE TEXTURES_FILES "src/textures/*.cpp" "src/textures/*.h" "src/textures/*.hpp")
 file(GLOB_RECURSE VIEWS_FILES "src/views/*.cpp" "src/views/*.h" "src/views/*.hpp")
+file(GLOB_RECURSE WINDOWING_FILES "src/windowing/*.cpp" "src/windowing/*.h" "src/windowing/*.hpp")
 
 # 合并所有源文件
 list(APPEND SRC_FILES 
@@ -25,6 +26,7 @@ list(APPEND SRC_FILES
     ${SHADERS_FILES}
     ${TEXTURES_FILES}
     ${VIEWS_FILES}
+    ${WINDOWING_FILES}
 )
 
 # 创建静态库

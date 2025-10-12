@@ -5,6 +5,7 @@
 // 前向声明
 namespace iengine {
     class Scene;
+    class Context;
     
     enum class RendererType {
         OpenGL,
@@ -15,7 +16,7 @@ namespace iengine {
     public:
         virtual ~Renderer() = default;
         
-        virtual bool initialize() = 0;
+        virtual bool initialize(std::shared_ptr<Context> context) = 0;
         virtual void cleanup() = 0;
         virtual void render(std::shared_ptr<Scene> scene) = 0;
         virtual void resize(int width, int height) = 0;

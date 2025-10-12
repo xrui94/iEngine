@@ -1,4 +1,4 @@
-#include "../../include/iengine/lights/SpotLight.h"
+#include "iengine/lights/SpotLight.h"
 
 #include <cmath>
 

@@ -104,10 +104,15 @@ namespace iengine {
         void markUpdated();
 
         // 上传到GPU
-        virtual void upload(Context* context, bool force = false);
+        virtual void upload(std::shared_ptr<Context> context, bool force = false);
 
         // 更新纹理内容
-        virtual void updateTexture(Context* context);
+        virtual void updateTexture(std::shared_ptr<Context> context);
+        
+        // 默认纹理数据
+        static const uint8_t* getDefaultImageData();
+        static int getDefaultWidth() { return DEFAULT_WIDTH; }
+        static int getDefaultHeight() { return DEFAULT_HEIGHT; }
 
     protected:
         std::string name_;
@@ -122,9 +127,20 @@ namespace iengine {
         TextureMinFilter minFilter_;
         TextureMagFilter magFilter_;
         bool needsUpdate_;
-
+        
+        // 图像数据
+        std::unique_ptr<uint8_t[]> imageData_;
+        int channels_; // RGBA = 4, RGB = 3
+        
         // 加载图像数据
         void loadFromFile(const std::string& filePath);
+        
+        // 设置原始图像数据
+        void setImageData(const uint8_t* data, int width, int height, int channels);
+        
+        // 获取图像数据
+        const uint8_t* getImageData() const { return imageData_.get(); }
+        int getChannels() const { return channels_; }
 
     private:
         static const int DEFAULT_WIDTH = 2;

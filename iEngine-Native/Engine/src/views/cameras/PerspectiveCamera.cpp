@@ -1,4 +1,4 @@
-#include "../../../include/iengine/views/cameras/PerspectiveCamera.h"
+#include "iengine/views/cameras/PerspectiveCamera.h"
 #include <cmath>
 
 #ifndef M_PI

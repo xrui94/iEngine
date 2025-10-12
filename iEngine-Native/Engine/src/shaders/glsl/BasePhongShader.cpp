@@ -1,4 +1,5 @@
-#include "../../../include/iengine/shaders/glsl/BasePhongShader.h"
+#include "iengine/shaders/glsl/BasePhongShader.h"
+
 #include <string>
 
 namespace iengine {

@@ -85,8 +85,13 @@ namespace iengine {
         UniformValue(int value) : type_(Type::INT), int_(value) {}
         UniformValue(unsigned int value) : type_(Type::UINT), uint_(value) {}
         UniformValue(bool value) : type_(Type::BOOL), bool_(value) {}
-        UniformValue(const std::vector<float>& value) : type_(Type::VEC4), vec_(value) {}
+        UniformValue(const std::vector<float>& value);
         UniformValue(const std::shared_ptr<Texture>& value) : type_(Type::TEXTURE), texture_(value) {}
+        
+        // 用于矩阵的构造函数
+        static UniformValue fromMatrix4(const class Matrix4& matrix);
+        static UniformValue fromVec3(float x, float y, float z);
+        static UniformValue fromVec4(float x, float y, float z, float w);
         
         Type getType() const { return type_; }
         

@@ -1,4 +1,4 @@
-#include "../../../include/iengine/views/cameras/Camera.h"
+#include "iengine/views/cameras/Camera.h"
 
 namespace iengine {
     Camera::Camera() {

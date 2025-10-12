@@ -1,5 +1,5 @@
-#include "../../include/iengine/math/Matrix2.h"
-#include "../../include/iengine/math/Vector2.h"
+#include "iengine/math/Matrix2.h"
+#include "iengine/math/Vector2.h"
 
 #include <cmath>
 #include <cstring>

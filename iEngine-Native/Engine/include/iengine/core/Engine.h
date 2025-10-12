@@ -34,9 +34,11 @@ namespace iengine {
         
     private:
         void initRenderer();
+        void setRenderer(RendererType renderer, bool init);
         void update(float deltaTime);
         void tick();
         
+    private:
         std::unique_ptr<Renderer> activeRenderer_;
         std::unique_ptr<Renderer> openglRenderer_;
         std::unique_ptr<Renderer> webgpuRenderer_;

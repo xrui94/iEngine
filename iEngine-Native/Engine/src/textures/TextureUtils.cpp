@@ -1,4 +1,4 @@
-#include "../../include/iengine/textures/TextureUtils.h"
+#include "iengine/textures/TextureUtils.h"
 
 // OpenGL 头文件 (在实际项目中可能需要包含具体的OpenGL头文件)
 // #include <GL/glew.h> 或 #include <glad/glad.h>

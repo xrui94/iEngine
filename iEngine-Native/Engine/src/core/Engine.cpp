@@ -1,18 +1,20 @@
-#include "../../include/iengine/core/Engine.h"
+#include "iengine/core/Engine.h"
+#include "iengine/scenes/Scene.h"
+#include "iengine/renderers/opengl/OpenGLRenderer.h"
+#include "iengine/shaders/ShaderLib.h"
+#include "iengine/materials/MaterialManager.h"
+
+#ifdef IENGINE_WEBGPU_SUPPORT
+#include "iengine/renderers/webgpu/WebGPURenderer.h"
+#endif
 
 #include <iostream>
 #include <memory>
-#include "../include/iengine/scenes/Scene.h"
-#include "../include/iengine/renderers/opengl/OpenGLRenderer.h"
-
-#ifdef IENGINE_WEBGPU_SUPPORT
-#include "../include/iengine/renderers/webgpu/WebGPURenderer.h"
-#endif
 
 namespace iengine {
 
     Engine::Engine(const EngineOptions& options) {
-        setRenderer(options.renderer);
+        setRenderer(options.renderer, false);
     }
 
     Engine::~Engine() {
@@ -27,15 +29,19 @@ namespace iengine {
         running_ = true;
         lastTime_ = 0.0f;
 
-        // 初始化渲染器
-        if (activeRenderer_) {
-            activeRenderer_->initialize();
-        }
+        // 初始化渲染器（从场景获取context）
+        initRenderer();
 
-        // 启动主循环
-        while (running_) {
-            tick();
-        }
+		// 预热材质管理器中的内置着色器
+        ShaderLib::registerBuiltInShaders();
+
+		// 预热材质管理器中的内置材质
+		//registerBuiltInMaterials();   // 需要实现，甚至是作为 MaterialManager 的静态方法
+
+        // 注意：不在这里启动主循环，由外部应用程序控制
+        // while (running_) {
+        //     tick();
+        // }
     }
 
     void Engine::stop() {
@@ -53,12 +59,19 @@ namespace iengine {
 
     void Engine::addScene(const std::string& name, std::shared_ptr<Scene> scene) {
         scenes_[name] = scene;
+        setActiveScene(name);
     }
 
     void Engine::setActiveScene(const std::string& name) {
         auto it = scenes_.find(name);
         if (it != scenes_.end()) {
             activeScene_ = it->second;
+            // 设置Scene的Context类型与当前渲染器匹配
+            if (activeRenderer_) {
+                if (dynamic_cast<OpenGLRenderer*>(activeRenderer_.get())) {
+                    activeScene_->setContextType(RendererType::OpenGL);
+                }
+            }
         }
     }
 
@@ -71,34 +84,55 @@ namespace iengine {
     }
 
     void Engine::setRenderer(RendererType renderer) {
+        setRenderer(renderer);
+    }
+
+    void Engine::setRenderer(RendererType renderer, bool init) {
         switch (renderer) {
-            case RendererType::OpenGL:
-                if (!openglRenderer_) {
-                    openglRenderer_ = std::make_unique<OpenGLRenderer>();
-                }
-                activeRenderer_ = std::move(openglRenderer_);
-                break;
+        case RendererType::OpenGL:
+            if (!openglRenderer_) {
+                openglRenderer_ = std::make_unique<OpenGLRenderer>();
+            }
+            activeRenderer_ = std::move(openglRenderer_);
+            break;
 #ifdef IENGINE_WEBGPU_SUPPORT
-            case RendererType::WebGPU:
-                if (!webgpuRenderer_) {
-                    webgpuRenderer_ = std::make_unique<WebGPURenderer>();
-                }
-                activeRenderer_ = std::move(webgpuRenderer_);
-                break;
+        case RendererType::WebGPU:
+            if (!webgpuRenderer_) {
+                webgpuRenderer_ = std::make_unique<WebGPURenderer>();
+            }
+            activeRenderer_ = std::move(webgpuRenderer_);
+            break;
 #endif
-            default:
-                // 默认使用 OpenGL
-                if (!openglRenderer_) {
-                    openglRenderer_ = std::make_unique<OpenGLRenderer>();
-                }
-                activeRenderer_ = std::move(openglRenderer_);
-                break;
+        default:
+            // 默认使用 OpenGL
+            if (!openglRenderer_) {
+                openglRenderer_ = std::make_unique<OpenGLRenderer>();
+            }
+            activeRenderer_ = std::move(openglRenderer_);
+            break;
+        }
+
+        if (init) {
+            initRenderer();
         }
     }
 
+
     void Engine::initRenderer() {
+        if (!activeScene_) {
+            std::cerr << "Warning: No active scene set, cannot initialize renderer" << std::endl;
+            return;
+        }
+        
         if (activeRenderer_) {
-            activeRenderer_->initialize();
+            // 从scene获取context并传给renderer
+            auto context = activeScene_->getContext();
+            if (context) {
+                activeRenderer_->initialize(context);
+                std::cout << "Renderer initialized with context from scene" << std::endl;
+            } else {
+                std::cerr << "Error: Scene has no context" << std::endl;
+            }
         }
     }
 

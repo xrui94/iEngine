@@ -1,4 +1,5 @@
-#include "../../../include/iengine/shaders/wgsl/BaseMaterialShader.h"
+#include "iengine/shaders/wgsl/BaseMaterialShader.h"
+
 #include <string>
 
 namespace iengine {

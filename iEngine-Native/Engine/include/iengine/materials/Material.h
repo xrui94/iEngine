@@ -14,9 +14,22 @@ namespace iengine {
     class Camera;
     class Mesh;
     class Light;
+    class UniformValue;
     
     struct TextureInfo {
         std::map<std::string, std::shared_ptr<Texture>> textures;
+    };
+    
+    // 渲染管线状态
+    struct RenderPipelineState {
+        bool depthTest = true;
+        bool depthWrite = true;
+        int depthFunc = 0x0203; // GL_LEQUAL
+        bool blend = false;
+        int srcBlend = 0x0302; // GL_SRC_ALPHA
+        int dstBlend = 0x0303; // GL_ONE_MINUS_SRC_ALPHA
+        bool cullFace = true;
+        int cullMode = 0x0405; // GL_BACK
     };
     
     class Material {
@@ -38,7 +51,7 @@ namespace iengine {
         
         // 声明抽象方法，要求子类必须实现
         virtual std::map<std::string, bool> getShaderMacroDefines() const = 0;
-        virtual std::map<std::string, void*> getUniforms(
+        virtual std::map<std::string, UniformValue> getUniforms(
             std::shared_ptr<Context> context,
             std::shared_ptr<Camera> camera,
             std::shared_ptr<Mesh> mesh,

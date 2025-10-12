@@ -67,3 +67,7 @@
 #include "lights/DirectionalLight.h"
 #include "lights/PointLight.h"
 #include "lights/SpotLight.h"
+
+// 窗口系统（仅包含最基本的窗口抽象）
+#include "windowing/Window.h"
+#include "windowing/WindowFactory.h"

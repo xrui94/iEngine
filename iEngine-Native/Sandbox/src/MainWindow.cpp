@@ -1,34 +1,57 @@
-#include <sandbox/MainWindow.h>
-#include <sandbox/MainOpenGLWidget.h>
+#include "MainWindow.h"
+#include "QtWindow.h"
 #include <iengine/iengine.h>
 
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
 #include <QApplication>
+#include <QVBoxLayout>
+#include <QWidget>
 #include <iostream>
 
 namespace sandbox {
 
     MainWindow::MainWindow(QWidget* parent)
         : QMainWindow(parent)
-        , openGLWidget_(new MainOpenGLWidget(this))
+        , qtWindow_(nullptr)
         , engine_(nullptr)
         , scene_(nullptr)
         , camera_(nullptr) {
         
         // 设置窗口属性
-        setWindowTitle("iEngine Sandbox");
+        setWindowTitle("iEngine Qt Sandbox");
         resize(1024, 768);
         
-        // 创建中心部件
+        // 创建Qt窗口抽象
+        qtWindow_ = std::make_unique<QtWindow>();
+        if (!qtWindow_->initialize()) {
+            std::cerr << "Failed to initialize QtWindow" << std::endl;
+            return;
+        }
+        
+        // 设置中心部件
         QWidget* centralWidget = new QWidget(this);
         setCentralWidget(centralWidget);
         
         // 创建布局
         QVBoxLayout* layout = new QVBoxLayout(centralWidget);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->addWidget(openGLWidget_);
+        layout->addWidget(qtWindow_->getQtWidget());
+        
+        // 注册Qt窗口创建器到Engine的WindowFactory
+        iengine::WindowFactory::registerWindowCreator(
+            iengine::WindowType::Qt,
+            [this]() -> std::unique_ptr<iengine::WindowInterface> {
+                auto window = std::make_unique<QtWindow>();
+                if (window->initialize()) {
+                    return window;
+                }
+                return nullptr;
+            }
+        );
+        
+        std::cout << "Qt窗口已注册到Engine的WindowFactory" << std::endl;
         
         // 初始化引擎
         initializeEngine();
@@ -37,23 +60,7 @@ namespace sandbox {
         setupScene();
         
         // 创建菜单栏
-        QMenuBar* menuBar = new QMenuBar(this);
-        setMenuBar(menuBar);
-        
-        // 文件菜单
-        QMenu* fileMenu = menuBar->addMenu("&File");
-        QAction* exitAction = fileMenu->addAction("&Exit");
-        connect(exitAction, &QAction::triggered, this, &QApplication::quit);
-        
-        // 视图菜单
-        QMenu* viewMenu = menuBar->addMenu("&View");
-        QAction* resetViewAction = viewMenu->addAction("&Reset View");
-        connect(resetViewAction, &QAction::triggered, this, [this]() {
-            if (camera_) {
-                camera_->setPosition(0.0f, 0.0f, 5.0f);
-                camera_->lookAt(0.0f, 0.0f, 0.0f);
-            }
-        });
+        createMenus();
     }
     
     MainWindow::~MainWindow() {
@@ -67,8 +74,8 @@ namespace sandbox {
             options.renderer = iengine::RendererType::OpenGL;
             engine_ = std::make_shared<iengine::Engine>(options);
             
-            // 将引擎设置到 OpenGL widget
-            openGLWidget_->setEngine(engine_);
+            // 将引擎设置到Qt窗口
+            qtWindow_->setEngine(engine_);
         } catch (const std::exception& e) {
             std::cerr << "Failed to initialize engine: " << e.what() << std::endl;
         }
@@ -80,8 +87,8 @@ namespace sandbox {
         }
         
         try {
-            // 创建场景
-            scene_ = std::make_shared<iengine::Scene>();
+            // 创建场景（Qt模式，不使用GLFW窗口）
+            scene_ = std::make_shared<iengine::Scene>(nullptr);
             
             // 创建相机
             camera_ = std::make_shared<iengine::PerspectiveCamera>(60.0f, 1.0f, 0.1f, 100.0f);
@@ -101,7 +108,7 @@ namespace sandbox {
             // 创建材质
             iengine::BaseMaterialParams params;
             params.name = "RedMaterial";
-            params.shaderName = "basic";
+            params.shaderName = "base_material";  // 使用正确的着色器名称
             params.color = iengine::Color(1.0f, 0.0f, 0.0f, 1.0f); // 红色
             auto material = std::make_shared<iengine::BaseMaterial>(params);
             
@@ -113,13 +120,31 @@ namespace sandbox {
             
             // 将场景添加到引擎
             engine_->addScene("main", scene_);
-            engine_->setActiveScene("main");
             
-            // 将场景设置到 OpenGL widget
-            openGLWidget_->setScene(scene_);
+            // 将场景设置到Qt窗口
+            qtWindow_->setScene(scene_);
         } catch (const std::exception& e) {
             std::cerr << "Failed to setup scene: " << e.what() << std::endl;
         }
+    }
+    
+    void MainWindow::createMenus() {
+        // 创建文件菜单
+        QMenu* fileMenu = menuBar()->addMenu("&File");
+        
+        QAction* exitAction = new QAction("&Exit", this);
+        exitAction->setShortcut(QKeySequence::Quit);
+        connect(exitAction, &QAction::triggered, this, &QWidget::close);
+        fileMenu->addAction(exitAction);
+        
+        // 创建帮助菜单
+        QMenu* helpMenu = menuBar()->addMenu("&Help");
+        
+        QAction* aboutAction = new QAction("&About", this);
+        connect(aboutAction, &QAction::triggered, [this]() {
+            // 简单的关于对话框
+        });
+        helpMenu->addAction(aboutAction);
     }
 
 } // namespace sandbox

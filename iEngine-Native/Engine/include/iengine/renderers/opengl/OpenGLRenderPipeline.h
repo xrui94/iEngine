@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "iengine/renderers/opengl/OpenGLShaderProgram.h"
-#include "iengine/renderers/opengl/OpenGLUniforms.h"
+#include "OpenGLShaderProgram.h"
+#include "OpenGLUniforms.h"
 
 namespace iengine {
 

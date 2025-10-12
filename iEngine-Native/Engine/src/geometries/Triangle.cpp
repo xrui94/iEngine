@@ -1,4 +1,4 @@
-#include "../../include/iengine/geometries/Triangle.h"
+#include "iengine/geometries/Triangle.h"
 
 namespace iengine {
     Triangle::Triangle() : Geometry(

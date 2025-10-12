@@ -1,4 +1,4 @@
-#include "../../include/iengine/lights/Light.h"
+#include "iengine/lights/Light.h"
 
 namespace iengine {
     Light::Light(const Color& color, float intensity)

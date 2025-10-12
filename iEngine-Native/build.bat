@@ -10,5 +10,4 @@ cmake --build . --config Debug
 
 echo.
 echo Build complete!
-echo Run the demo with: build\Debug\iengine_demo.exe
 pause

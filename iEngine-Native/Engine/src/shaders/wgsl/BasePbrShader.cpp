@@ -1,4 +1,5 @@
-#include "../../../include/iengine/shaders/wgsl/BasePbrShader.h"
+#include "iengine/shaders/wgsl/BasePbrShader.h"
+
 #include <string>
 
 namespace iengine {

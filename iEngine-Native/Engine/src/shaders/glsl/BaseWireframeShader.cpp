@@ -1,4 +1,5 @@
-#include "../../../include/iengine/shaders/glsl/BaseWireframeShader.h"
+#include "iengine/shaders/glsl/BaseWireframeShader.h"
+
 #include <string>
 
 namespace iengine {

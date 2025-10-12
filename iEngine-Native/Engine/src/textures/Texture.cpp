@@ -1,6 +1,9 @@
-#include "../../include/iengine/textures/Texture.h"
+#include "iengine/textures/Texture.h"
+#include "iengine/renderers/Context.h"
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <memory>
 
 namespace iengine {
 
@@ -22,7 +25,11 @@ namespace iengine {
           wrapT_(options.wrapT),
           minFilter_(options.minFilter),
           magFilter_(options.magFilter),
-          needsUpdate_(false) {
+          needsUpdate_(true),
+          channels_(4) { // RGBA
+        
+        // 初始化为默认图像数据
+        setImageData(defaultImageData_, DEFAULT_WIDTH, DEFAULT_HEIGHT, 4);
         
         if (!options.sourcePath.empty()) {
             loadFromFile(options.sourcePath);
@@ -103,27 +110,35 @@ namespace iengine {
         needsUpdate_ = false;
     }
 
-    void Texture::upload(Context* context, bool force) {
-        // 在实际实现中，这里会根据上下文类型（OpenGL或WebGPU）上传纹理数据
-        // 这里简化处理
-        std::cout << "Uploading texture: " << name_ << std::endl;
+    void Texture::upload(std::shared_ptr<Context> context, bool force) {
+        std::cout << "Uploading texture: " << name_ << " (" << width_ << "x" << height_ << ")" << std::endl;
         
-        if (!gpuTexture_ || force) {
+        // 1. 判断是否需要重新创建GPU纹理
+        if (!gpuTexture_ || force || 
+            (gpuTextureWidth_ != width_ || gpuTextureHeight_ != height_)) {
+            
+            // 清理旧纹理
+            if (gpuTexture_) {
+                context->deleteTexture(gpuTexture_);
+                gpuTexture_ = nullptr;
+            }
+            
             // 创建GPU纹理
-            // 这里应该根据具体的渲染API创建纹理对象
-            gpuTexture_ = new char[1]; // 简化示例
+            gpuTexture_ = context->createTexture(width_, height_, imageData_.get());
             gpuTextureWidth_ = width_;
             gpuTextureHeight_ = height_;
         }
         
-        if (needsUpdate_) {
-            // 上传数据到GPU
-            std::cout << "Uploading texture data to GPU" << std::endl;
+        // 2. 上传数据
+        if (needsUpdate_ && gpuTexture_) {
+            context->writeTexture(gpuTexture_, imageData_.get(), width_, height_);
             needsUpdate_ = false;
         }
+        
+        std::cout << "Texture uploaded successfully: " << name_ << std::endl;
     }
 
-    void Texture::updateTexture(Context* context) {
+    void Texture::updateTexture(std::shared_ptr<Context> context) {
         if (!gpuTexture_) {
             std::cout << "GPU texture not created, cannot update texture" << std::endl;
             return;
@@ -140,7 +155,42 @@ namespace iengine {
         std::cout << "Loading texture from file: " << filePath << std::endl;
         width_ = 256;  // 示例值
         height_ = 256; // 示例值
+        
+        // 创建一个简单的棋盘格纹理数据作为示例
+        channels_ = 4; // RGBA
+        size_t dataSize = width_ * height_ * channels_;
+        imageData_ = std::make_unique<uint8_t[]>(dataSize);
+        
+        // 生成棋盘格图案
+        for (int y = 0; y < height_; ++y) {
+            for (int x = 0; x < width_; ++x) {
+                size_t index = (y * width_ + x) * channels_;
+                bool isWhite = ((x / 32) + (y / 32)) % 2 == 0;
+                uint8_t color = isWhite ? 255 : 128;
+                imageData_[index + 0] = color;     // R
+                imageData_[index + 1] = color;     // G
+                imageData_[index + 2] = color;     // B
+                imageData_[index + 3] = 255;       // A
+            }
+        }
+        
         needsUpdate_ = true;
+    }
+    
+    void Texture::setImageData(const uint8_t* data, int width, int height, int channels) {
+        width_ = width;
+        height_ = height;
+        channels_ = channels;
+        
+        size_t dataSize = width_ * height_ * channels_;
+        imageData_ = std::make_unique<uint8_t[]>(dataSize);
+        std::memcpy(imageData_.get(), data, dataSize);
+        
+        needsUpdate_ = true;
+    }
+    
+    const uint8_t* Texture::getDefaultImageData() {
+        return defaultImageData_;
     }
 
 } // namespace iengine

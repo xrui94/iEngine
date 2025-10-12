@@ -40,6 +40,9 @@ namespace iengine {
         
         void upload(std::shared_ptr<Context> context, bool force = false);
         
+        // 构建交错缓冲区
+        std::vector<float> buildInterleavedBuffer(const VertexLayout& layout) const;
+        
     private:
         std::vector<std::pair<std::string, std::vector<float>>> vertexAttributeDataMap;
         

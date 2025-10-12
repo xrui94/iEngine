@@ -1,4 +1,5 @@
-#include "../../../include/iengine/views/controls/FirstPersonControls.h"
+#include "iengine/views/controls/FirstPersonControls.h"
+
 #include <algorithm>
 #include <cmath>
 

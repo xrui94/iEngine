@@ -1,6 +1,8 @@
-#include "../../../include/iengine/renderers/opengl/OpenGLShaderProgram.h"
-#include "../../../include/iengine/renderers/opengl/OpenGLContext.h"
-#include "../../../include/iengine/renderers/opengl/OpenGLUniforms.h"
+#include "iengine/renderers/opengl/OpenGLShaderProgram.h"
+#include "iengine/renderers/opengl/OpenGLContext.h"
+#include "iengine/renderers/opengl/OpenGLUniforms.h"
+
+#include <iostream>
 
 namespace iengine {
     OpenGLShaderProgram::OpenGLShaderProgram(std::shared_ptr<OpenGLContext> context, 
@@ -18,14 +20,34 @@ namespace iengine {
     }
     
     void* OpenGLShaderProgram::createProgram() {
-        // 创建OpenGL着色器程序
-        // 这里应该是实际的OpenGL着色器编译和链接逻辑
-        return nullptr;
+        // 使用 OpenGLContext 创建着色器程序
+        if (!context) {
+            std::cerr << "OpenGLShaderProgram: No context set" << std::endl;
+            return nullptr;
+        }
+        
+        std::cout << "OpenGLShaderProgram: Creating shader program..." << std::endl;
+        std::cout << "Vertex shader code length: " << vertCode.length() << std::endl;
+        std::cout << "Fragment shader code length: " << fragCode.length() << std::endl;
+        
+        unsigned int programId = context->createProgram(vertCode, fragCode);
+        if (programId == 0) {
+            std::cerr << "OpenGLShaderProgram: Failed to create shader program" << std::endl;
+            std::cerr << "Vertex shader:\n" << vertCode << std::endl;
+            std::cerr << "Fragment shader:\n" << fragCode << std::endl;
+            return nullptr;
+        }
+        
+        std::cout << "OpenGLShaderProgram: Successfully created program ID: " << programId << std::endl;
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(programId));
     }
     
     void OpenGLShaderProgram::use() {
         // 使用着色器程序
-        // 这里应该是实际的OpenGL glUseProgram 调用
+        if (context && program) {
+            unsigned int programId = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(program));
+            context->useProgram(programId);
+        }
     }
     
     void OpenGLShaderProgram::bind() {
@@ -34,7 +56,9 @@ namespace iengine {
     
     void OpenGLShaderProgram::unbind() {
         // 取消绑定着色器程序
-        // 这里应该是实际的OpenGL glUseProgram(0) 调用
+        if (context) {
+            context->useProgram(0);
+        }
     }
     
     void OpenGLShaderProgram::setUniform(const std::string& name, const UniformValue& value) {

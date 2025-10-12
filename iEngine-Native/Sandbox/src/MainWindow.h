@@ -1,11 +1,6 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QMenuBar>
-#include <QMenu>
-#include <QAction>
 #include <memory>
 
 // 前向声明
@@ -16,8 +11,7 @@ namespace iengine {
 }
 
 namespace sandbox {
-
-    class MainOpenGLWidget;
+    class QtWindow;
 
     class MainWindow : public QMainWindow {
         Q_OBJECT
@@ -26,11 +20,12 @@ namespace sandbox {
         explicit MainWindow(QWidget* parent = nullptr);
         ~MainWindow();
 
+    private:
         void initializeEngine();
         void setupScene();
+        void createMenus();
 
-    private:
-        MainOpenGLWidget* openGLWidget_;
+        std::unique_ptr<QtWindow> qtWindow_;
         std::shared_ptr<iengine::Engine> engine_;
         std::shared_ptr<iengine::Scene> scene_;
         std::shared_ptr<iengine::PerspectiveCamera> camera_;

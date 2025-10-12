@@ -1,4 +1,5 @@
-#include "../../include/iengine/geometries/Geometry.h"
+#include "iengine/geometries/Geometry.h"
+
 #include <algorithm>
 #include <limits>
 

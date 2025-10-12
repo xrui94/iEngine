@@ -1,88 +1,87 @@
-#include "../../include/iengine/materials/PhongMaterial.h"
-#include "../../include/iengine/renderers/opengl/OpenGLUniforms.h"
-#include <vector>
+#include "iengine/materials/PhongMaterial.h"
+#include "iengine/renderers/Context.h"
+#include "iengine/renderers/opengl/OpenGLUniforms.h"
+#include "iengine/views/cameras/Camera.h"
+#include "iengine/core/Mesh.h"
+#include "iengine/lights/Light.h"
+#include "iengine/math/Matrix4.h"
+
+#include <iostream>
 
 namespace iengine {
-
-    PhongMaterial::PhongMaterial(const PhongMaterialParams& params) : Material(params.name, params.shaderName),
-        color(params.color),
-        specular(params.specular),
-        shininess(params.shininess) {
-        // Phong 材质特定初始化
+    PhongMaterial::PhongMaterial(const PhongMaterialParams& params)
+        : Material(params.name, params.shaderName), 
+          color(params.color), 
+          specular(params.specular), 
+          shininess(params.shininess) {}
+    
+    void PhongMaterial::setColor(float r, float g, float b) {
+        color.r = r;
+        color.g = g;
+        color.b = b;
     }
-
-    PhongMaterial::~PhongMaterial() {}
-
-    const Color& PhongMaterial::getDiffuse() const {
-        return color;
+    
+    void PhongMaterial::setSpecular(float r, float g, float b) {
+        specular.r = r;
+        specular.g = g;
+        specular.b = b;
     }
-
-    const Color& PhongMaterial::getSpecular() const {
-        return specular;
-    }
-
-    float PhongMaterial::getShininess() const {
-        return shininess;
-    }
-
-    const Color& PhongMaterial::getEmissive() const {
-        // 在PhongMaterial中没有emissive属性，返回默认的黑色
-        static Color black(0.0f, 0.0f, 0.0f, 1.0f);
-        return black;
-    }
-
-    void PhongMaterial::setDiffuse(const Color& diffuse) {
-        color = diffuse;
-    }
-
-    void PhongMaterial::setSpecular(const Color& specular) {
-        this->specular = specular;
-    }
-
+    
     void PhongMaterial::setShininess(float shininess) {
         this->shininess = shininess;
     }
-
-    void PhongMaterial::setEmissive(const Color& emissive) {
-        // 在PhongMaterial中没有emissive属性，忽略设置
-    }
-
-    std::vector<std::string> PhongMaterial::getShaderDefines() const {
-        std::vector<std::string> defines;
-        defines.push_back("MATERIAL_PHONG");
-        
-        // 根据使用的贴图添加定义
-        if (diffuseTexture_) defines.push_back("HAS_DIFFUSE_MAP");
-        if (specularTexture_) defines.push_back("HAS_SPECULAR_MAP");
-        if (normalTexture_) defines.push_back("HAS_NORMAL_MAP");
-        if (emissiveTexture_) defines.push_back("HAS_EMISSIVE_MAP");
-        
+    
+    std::map<std::string, bool> PhongMaterial::getShaderMacroDefines() const {
+        std::map<std::string, bool> defines;
+        defines["HAS_COLOR"] = true;
+        defines["HAS_SPECULAR"] = true;
         return defines;
     }
-
-    std::unordered_map<std::string, UniformValue> PhongMaterial::getUniforms() const {
-        std::unordered_map<std::string, UniformValue> uniforms;
+    
+    std::map<std::string, UniformValue> PhongMaterial::getUniforms(
+        std::shared_ptr<Context> context,
+        std::shared_ptr<Camera> camera,
+        std::shared_ptr<Mesh> mesh,
+        const std::vector<std::shared_ptr<Light>>& lights) {
         
-        // 将Color转换为vector<float>
-        std::vector<float> diffuseVec = {color.r, color.g, color.b, color.a};
-        std::vector<float> specularVec = {specular.r, specular.g, specular.b, specular.a};
+        std::map<std::string, UniformValue> uniforms;
         
-        uniforms["u_Diffuse"] = UniformValue(diffuseVec);
-        uniforms["u_Specular"] = UniformValue(specularVec);
-        uniforms["u_Shininess"] = UniformValue(shininess);
+        // 计算模型-视图矩阵
+        Matrix4 modelMatrix(mesh->transform);
+        Matrix4 viewMatrix = camera->getViewMatrix();
+        Matrix4 modelViewMatrix = viewMatrix;
+        modelViewMatrix.multiply(modelMatrix);
+        
+        // 获取投影矩阵
+        Matrix4 projectionMatrix = camera->getProjectionMatrix();
+        
+        // 设置基本 uniforms
+        uniforms["uModelViewMatrix"] = UniformValue::fromMatrix4(modelViewMatrix);
+        uniforms["uProjectionMatrix"] = UniformValue::fromMatrix4(projectionMatrix);
+        
+        // 设置 Phong 材质参数
+        uniforms["uColor"] = UniformValue::fromVec4(color.r, color.g, color.b, color.a);
+        uniforms["uSpecular"] = UniformValue::fromVec3(specular.r, specular.g, specular.b);
+        uniforms["uShininess"] = UniformValue(shininess);
+        
+        std::cout << "PhongMaterial::getUniforms() - Computed Phong uniforms" << std::endl;
         
         return uniforms;
     }
-
-    std::vector<std::shared_ptr<Texture>> PhongMaterial::getTextures() const {
-        std::vector<std::shared_ptr<Texture>> textures;
-        
-        if (diffuseTexture_) textures.push_back(diffuseTexture_);
-        if (specularTexture_) textures.push_back(specularTexture_);
-        if (normalTexture_) textures.push_back(normalTexture_);
-        if (emissiveTexture_) textures.push_back(emissiveTexture_);
-        
-        return textures;
+    
+    TextureInfo PhongMaterial::getTextures() {
+        TextureInfo info;
+        // Phong材质没有纹理（可以在未来扩展）
+        return info;
     }
-
-} // namespace iengine
+    
+    RenderPipelineState PhongMaterial::getRenderPipelineState() const {
+        RenderPipelineState state;
+        state.depthTest = depthTest;
+        state.depthWrite = depthWrite;
+        state.depthFunc = depthFunc;
+        state.blend = transparent;
+        state.cullFace = !doubleSided;
+        return state;
+    }
+}
