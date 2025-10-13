@@ -5,6 +5,9 @@
 #include <fstream>
 #include <memory>
 
+// STB Image 库用于加载图像（实现已在 def.cpp 中定义）
+#include <stb_image.h>
+
 namespace iengine {
 
     // 默认2x2 RGBA 棋盘格数据
@@ -150,31 +153,75 @@ namespace iengine {
     }
 
     void Texture::loadFromFile(const std::string& filePath) {
-        // 在实际实现中，这里会加载图像文件并设置width_和height_
-        // 这里简化处理，假设加载成功
         std::cout << "Loading texture from file: " << filePath << std::endl;
-        width_ = 256;  // 示例值
-        height_ = 256; // 示例值
         
-        // 创建一个简单的棋盘格纹理数据作为示例
-        channels_ = 4; // RGBA
-        size_t dataSize = width_ * height_ * channels_;
-        imageData_ = std::make_unique<uint8_t[]>(dataSize);
+        // 使用 STB Image 加载图像
+        int width, height, channels;
         
-        // 生成棋盘格图案
-        for (int y = 0; y < height_; ++y) {
-            for (int x = 0; x < width_; ++x) {
-                size_t index = (y * width_ + x) * channels_;
-                bool isWhite = ((x / 32) + (y / 32)) % 2 == 0;
-                uint8_t color = isWhite ? 255 : 128;
-                imageData_[index + 0] = color;     // R
-                imageData_[index + 1] = color;     // G
-                imageData_[index + 2] = color;     // B
-                imageData_[index + 3] = 255;       // A
+        // stbi_set_flip_vertically_on_load(true); // OpenGL 纹理坐标原点在左下角
+        
+        unsigned char* data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
+        
+        if (!data) {
+            std::cerr << "Failed to load texture: " << filePath << std::endl;
+            std::cerr << "STB Error: " << stbi_failure_reason() << std::endl;
+            
+            // 加载失败，使用默认棋盘格纹理
+            width_ = 256;
+            height_ = 256;
+            channels_ = 4; // RGBA
+            size_t dataSize = width_ * height_ * channels_;
+            imageData_ = std::make_unique<uint8_t[]>(dataSize);
+            
+            // 生成棋盘格图案
+            for (int y = 0; y < height_; ++y) {
+                for (int x = 0; x < width_; ++x) {
+                    size_t index = (y * width_ + x) * channels_;
+                    bool isWhite = ((x / 32) + (y / 32)) % 2 == 0;
+                    uint8_t color = isWhite ? 255 : 128;
+                    imageData_[index + 0] = color;     // R
+                    imageData_[index + 1] = color;     // G
+                    imageData_[index + 2] = color;     // B
+                    imageData_[index + 3] = 255;       // A
+                }
             }
+            
+            needsUpdate_ = true;
+            return;
         }
         
+        // 加载成功
+        std::cout << "Texture loaded successfully: " << width << "x" << height << " with " << channels << " channels" << std::endl;
+        
+        width_ = width;
+        height_ = height;
+        channels_ = channels;
+        
+        // 如果是 RGB 图像，转换为 RGBA
+        if (channels_ == 3) {
+            std::cout << "Converting RGB to RGBA" << std::endl;
+            size_t rgbaSize = width_ * height_ * 4;
+            imageData_ = std::make_unique<uint8_t[]>(rgbaSize);
+            
+            for (int i = 0; i < width_ * height_; ++i) {
+                imageData_[i * 4 + 0] = data[i * 3 + 0]; // R
+                imageData_[i * 4 + 1] = data[i * 3 + 1]; // G
+                imageData_[i * 4 + 2] = data[i * 3 + 2]; // B
+                imageData_[i * 4 + 3] = 255;             // A
+            }
+            channels_ = 4;
+        } else {
+            // 直接拷贝数据
+            size_t dataSize = width_ * height_ * channels_;
+            imageData_ = std::make_unique<uint8_t[]>(dataSize);
+            std::memcpy(imageData_.get(), data, dataSize);
+        }
+        
+        // 释放 STB Image 分配的内存
+        stbi_image_free(data);
+        
         needsUpdate_ = true;
+        std::cout << "Texture data copied to engine buffer" << std::endl;
     }
     
     void Texture::setImageData(const uint8_t* data, int width, int height, int channels) {

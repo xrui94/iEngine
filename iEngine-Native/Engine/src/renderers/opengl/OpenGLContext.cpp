@@ -288,6 +288,12 @@ namespace iengine {
         }
     }
     
+    void OpenGLContext::setUniform1i(int location, int value) {
+        if (location >= 0) {
+            glUniform1i(location, value);
+        }
+    }
+    
     void OpenGLContext::setUniform3f(int location, float x, float y, float z) {
         if (location >= 0) {
             glUniform3f(location, x, y, z);
@@ -422,6 +428,18 @@ namespace iengine {
             default:
                 std::cerr << "Unsupported uniform type: " << type << std::endl;
                 break;
+        }
+    }
+    
+    // 纹理操作方法（新增）
+    void OpenGLContext::activeTexture(int unit) {
+        glActiveTexture(GL_TEXTURE0 + unit);
+    }
+    
+    void OpenGLContext::bindTexture(void* texture) {
+        if (texture) {
+            unsigned int textureId = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(texture));
+            glBindTexture(GL_TEXTURE_2D, textureId);
         }
     }
 }

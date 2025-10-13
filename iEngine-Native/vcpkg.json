@@ -17,13 +17,18 @@
             "platform": "x64"
         },
         {
-            "name": "earcut-hpp",
-            "version>=": "2.2.4",
+            "name": "stb",
+            "version>=": "2024-07-29#1",
             "platform": "x64"
         },
         {
             "name": "glm",
             "version>=": "1.0.1",
+            "platform": "x64"
+        },
+        {
+            "name": "earcut-hpp",
+            "version>=": "2.2.4",
             "platform": "x64"
         },
         {

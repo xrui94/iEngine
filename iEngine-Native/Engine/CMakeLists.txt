@@ -13,6 +13,7 @@ file(GLOB_RECURSE SHADERS_FILES "src/shaders/*.cpp" "src/shaders/*.h" "src/shade
 file(GLOB_RECURSE TEXTURES_FILES "src/textures/*.cpp" "src/textures/*.h" "src/textures/*.hpp")
 file(GLOB_RECURSE VIEWS_FILES "src/views/*.cpp" "src/views/*.h" "src/views/*.hpp")
 file(GLOB_RECURSE WINDOWING_FILES "src/windowing/*.cpp" "src/windowing/*.h" "src/windowing/*.hpp")
+file(GLOB_RECURSE UTILS_FILES "src/utils/*.cpp" "src/utils/*.h" "src/utils/*.hpp")
 
 # 合并所有源文件
 list(APPEND SRC_FILES 
@@ -27,6 +28,7 @@ list(APPEND SRC_FILES
     ${TEXTURES_FILES}
     ${VIEWS_FILES}
     ${WINDOWING_FILES}
+    ${UTILS_FILES}
 )
 
 # 创建静态库
@@ -37,6 +39,9 @@ set_target_properties(iengine PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1
 )
+
+# stb
+target_include_directories(iengine PRIVATE ${Stb_INCLUDE_DIR})
 
 # glm
 target_link_libraries(iengine PRIVATE glm::glm-header-only)

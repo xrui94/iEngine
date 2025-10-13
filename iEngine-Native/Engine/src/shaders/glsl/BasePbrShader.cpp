@@ -5,41 +5,43 @@
 namespace iengine {
 
     const std::string BasePbrShader::vertex = R"(
-        attribute vec3 aPosition;
+#version 330 core
 
-        #ifdef HAS_NORMAL
-            attribute vec3 aNormal;
-            varying vec3 vNormal;
-        #endif
+layout(location = 0) in vec3 aPosition;
 
-        #ifdef HAS_TEXCOORD
-            attribute vec2 aTexCoord;
-            varying vec2 vTexCoord;
-        #endif
+#ifdef HAS_NORMAL
+    layout(location = 1) in vec3 aNormal;
+    out vec3 vNormal;
+#endif
 
-        uniform mat4 uModelViewMatrix;
-        uniform mat4 uProjectionMatrix;
+#ifdef HAS_TEXCOORD
+    layout(location = 2) in vec2 aTexCoord;
+    out vec2 vTexCoord;
+#endif
 
-        #ifdef HAS_NORMAL
-            uniform mat3 uNormalMatrix;
-        #endif
-        
-        varying vec3 vWorldPos;
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
 
-        void main() {
-            #ifdef HAS_NORMAL
-                vNormal = normalize(uNormalMatrix * aNormal);
-            #endif
+#ifdef HAS_NORMAL
+    uniform mat3 uNormalMatrix;
+#endif
 
-            vec4 worldPos = uModelViewMatrix * vec4(aPosition, 1.0);
-            vWorldPos = worldPos.xyz;
+out vec3 vWorldPos;
 
-            #ifdef HAS_TEXCOORD
-                vTexCoord = aTexCoord;
-            #endif
+void main() {
+    #ifdef HAS_NORMAL
+        vNormal = normalize(uNormalMatrix * aNormal);
+    #endif
 
-            gl_Position = uProjectionMatrix * worldPos;
-        }
+    vec4 worldPos = uModelViewMatrix * vec4(aPosition, 1.0);
+    vWorldPos = worldPos.xyz;
+
+    #ifdef HAS_TEXCOORD
+        vTexCoord = aTexCoord;
+    #endif
+
+    gl_Position = uProjectionMatrix * worldPos;
+}
     )";
 
     const std::string BasePbrShader::fragment = R"(

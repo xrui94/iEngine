@@ -62,9 +62,14 @@ namespace iengine {
         // Uniform操作
         int getUniformLocation(unsigned int program, const std::string& name);
         void setUniform1f(int location, float value);
+        void setUniform1i(int location, int value);  // 新增：用于纹理采样器
         void setUniform3f(int location, float x, float y, float z);
         void setUniform4f(int location, float x, float y, float z, float w);
         void setUniformMatrix4fv(int location, const float* value);
+        
+        // 纹理操作（新增）
+        void activeTexture(int unit);  // 激活纹理单元
+        void bindTexture(void* texture);  // 绑定纹理
         
         // 新增：动态uniform查询（参考Web版本）
         int getUniformCount(unsigned int program);

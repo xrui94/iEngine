@@ -2,14 +2,16 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>  // GLFW必须在glad之后包含
 #include "GLFWWindow.h"
-#include <iostream>
-#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
 #include <fcntl.h>
 #endif
+
+#include <iostream>
+#include <memory>
+#include <filesystem>
 
 // 简单的GLFW + iEngine应用程序
 namespace sandbox {
@@ -193,16 +195,30 @@ namespace sandbox {
                 // 将三角形向左移动一点
                 triangleModel->setPosition(-1.5f, 0.0f, 0.0f);
                 
-                // 2. 创建蓝色立方体
+                // 2. 创建带贴图的立方体（参照TS版本）
                 auto cubeGeometry = std::make_shared<iengine::Cube>(1.0f);
                 auto cubePrimitive = std::make_shared<iengine::Primitive>(iengine::PrimitiveType::TRIANGLES);
                 auto cubeMesh = std::make_shared<iengine::Mesh>(cubeGeometry, cubePrimitive);
                 
-                iengine::BaseMaterialParams cubeParams;
+                // 使用PbrMaterial代替BaseMaterial，参照TS版本
+                iengine::PbrMaterialParams cubeParams;
                 cubeParams.name = "CubeMaterial";
-                cubeParams.shaderName = "base_material";
-                cubeParams.color = iengine::Color(0.0f, 0.5f, 1.0f, 1.0f); // 蓝色
-                auto cubeMaterial = std::make_shared<iengine::BaseMaterial>(cubeParams);
+                cubeParams.shaderName = "base_pbr";
+                cubeParams.baseColor = iengine::Color(1.0f, 1.0f, 1.0f, 1.0f); // 白色基础颜色
+                cubeParams.metallic = 0.8f;
+                cubeParams.roughness = 0.02f;
+                
+                // 加载贴图（使用相对路径 assets/textures/）
+                iengine::TextureOptions texOptions;
+                texOptions.name = "WoodTexture";
+                texOptions.sourcePath = "./assets/textures/Wood048_1K-PNG/Wood048_1K-PNG_Color.png";
+                auto woodTexture = std::make_shared<iengine::Texture>(texOptions);
+                // 设置纹理单元（参照Web版本）
+                woodTexture->setUnit(0);
+                cubeParams.baseColorMap = woodTexture;
+                
+                std::cout << "正在创建带贴图的PBR材质..." << std::endl;
+                auto cubeMaterial = std::make_shared<iengine::PbrMaterial>(cubeParams);
                 
                 auto cubeModel = std::make_shared<iengine::Model>("Cube", cubeMesh, cubeMaterial);
                 // 将立方体向右移动一点
@@ -350,6 +366,9 @@ void setupConsoleEncoding() {
 int main() {
     // 首先设置控制台编码
     setupConsoleEncoding();
+    
+    // 调试：输出当前工作目录
+    std::cout << "当前工作目录：" << std::filesystem::current_path() << std::endl;
     
     try {
         std::cout << "=== iEngine GLFW + OpenGL 应用程序示例 ===" << std::endl;

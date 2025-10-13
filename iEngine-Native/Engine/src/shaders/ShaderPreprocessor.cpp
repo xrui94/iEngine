@@ -42,23 +42,18 @@ namespace iengine {
         
         // 3.2 精度声明（片元着色器需要，且在版本声明之后）
         if (type == "fragment" && codeWithoutVersion.find("precision") == std::string::npos) {
-            // 检查版本号，决定是否需要 #ifdef GL_ES
-            bool needsGLESCheck = false;
+            // 检查版本号，决定是否需要精度声明
             if (versionLine.find("330 core") != std::string::npos || 
                 versionLine.find("410 core") != std::string::npos ||
                 versionLine.find("450 core") != std::string::npos) {
-                // OpenGL 3.3+ Core Profile 不需要精度声明
-                needsGLESCheck = false;
+                // OpenGL 3.3+ Core Profile 不需要精度声明，因为桌面OpenGL不支持precision修饰符
+                // 跳过精度声明
             } else if (versionLine.find("300 es") != std::string::npos ||
                        versionLine.find("310 es") != std::string::npos) {
-                // OpenGL ES 3.x 需要精度声明，但不需要 #ifdef
+                // OpenGL ES 3.x 需要精度声明
                 header += "precision mediump float;\n";
             } else {
                 // WebGL 1.0 或其他情况，使用条件编译
-                needsGLESCheck = true;
-            }
-            
-            if (needsGLESCheck) {
                 header += "#ifdef GL_ES\n";
                 header += "precision mediump float;\n";
                 header += "#endif\n";
@@ -95,8 +90,24 @@ namespace iengine {
                 code = std::regex_replace(code, std::regex("\\bvarying\\b"), "in");
                 // 替换gl_FragColor
                 if (code.find("gl_FragColor") != std::string::npos) {
-                    // 添加输出声明
-                    code = "out vec4 fragColor;\n" + code;
+                    // 在版本声明和精度声明之后添加输出声明
+                    size_t insertPos = 0;
+                    // 找到版本声明后的位置
+                    if (code.find("#version") != std::string::npos) {
+                        insertPos = code.find('\n', code.find("#version")) + 1;
+                    }
+                    // 跳过精度声明（如果存在）
+                    if (code.find("precision", insertPos) != std::string::npos) {
+                        size_t precisionPos = code.find("precision", insertPos);
+                        insertPos = code.find('\n', precisionPos) + 1;
+                    }
+                    // 跳过宏定义
+                    while (insertPos < code.length() && code.substr(insertPos, 7) == "#define") {
+                        insertPos = code.find('\n', insertPos) + 1;
+                    }
+                    
+                    // 插入输出声明
+                    code.insert(insertPos, "out vec4 fragColor;\n");
                     code = std::regex_replace(code, std::regex("gl_FragColor"), "fragColor");
                 }
             }

@@ -77,6 +77,12 @@ namespace iengine {
             defines.insert(meshDefines.begin(), meshDefines.end());
             defines.insert(materialDefines.begin(), materialDefines.end());
             
+            // 调试输出：显示所有宏定义
+            std::cout << "OpenGLRenderer: Shader defines for " << component->material->shaderName << ":" << std::endl;
+            for (const auto& define : defines) {
+                std::cout << "  " << define.first << " = " << (define.second ? "true" : "false") << std::endl;
+            }
+            
             // 获取或创建着色器
             auto shader = getOrCreateShader(component->material->shaderName, defines);
             if (!shader) {
@@ -102,10 +108,14 @@ namespace iengine {
             // 设置uniforms
             shader->setUniforms(uniforms);
             
-            // 设置纹理
+            // 设置纹理（参照Web版本：texture在OpenGL中也是特殊的uniform）
+            // 直接将纹理作为uniform传递给shader，与Web版本保持一致
+            std::map<std::string, UniformValue> textureUniforms;
             for (const auto& texture : textures.textures) {
-                // TODO: 绑定纹理
-                // shader->setTexture(texture.first, texture.second);
+                textureUniforms[texture.first] = UniformValue(texture.second);
+            }
+            if (!textureUniforms.empty()) {
+                shader->setUniforms(textureUniforms);
             }
             
             // 6. 绘制(DrawCall)

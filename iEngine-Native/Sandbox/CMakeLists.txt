@@ -123,16 +123,58 @@ foreach(target EngineCoreTest QtAppExample GlfwAppExample)
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
     )
     
-    # 设置输出目录
-    set_target_properties(${target} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    )
+
 endforeach()
 
 # ===========================
-# Windows Qt 部署
+# Windows Qt 部署和资源拷贝
 # ===========================
+
+    # 为每个可执行程序拷贝资源文件
+    foreach(target EngineCoreTest QtAppExample GlfwAppExample)
+        # 设置编译器的警告级别，启用高级别的警告（Level 4），帮助发现潜在的代码问题
+        target_compile_options(${target} PRIVATE
+            $<$<CXX_COMPILER_ID:MSVC>:/W4>
+            $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
+        )
+
+        # 设置输出目录
+        set_target_properties(${target} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        )
+
+        # 设置 VS 的工作目录为整个项目的根构建目录，如：build/local-windows
+        # 但是这里操作具体的项目的构建目录更合理，如：build/local-windows/bin/Debug
+        # if(MSVC)
+        #     set_target_properties(${target} PROPERTIES
+        #         VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        #     )
+        # endif()
+
+        # -----------------------------
+        # POST_BUILD: 拷贝到构建目录(VS中启动的时候，工作目录就是这个构建目录)
+        # -----------------------------
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/../assets"
+                # "${CMAKE_BINARY_DIR}/assets"  # 整个项目的根构建目录
+                "${CMAKE_CURRENT_BINARY_DIR}/assets"    # 当前正在处理的项目的构建目录
+            COMMENT "Copying assets to build directory..."
+        )
+
+        # -----------------------------
+        # POST_BUILD: 拷贝到 exe 所在的目录
+        # -----------------------------
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/../assets"
+                "$<TARGET_FILE_DIR:${target}>/assets"
+            COMMENT "Copying assets to ${target} exe directory..."
+        )
+    endforeach()
+
 if(WIN32 AND MSVC)
+
     if(NOT DEFINED Qt6_DIR)
         message(FATAL_ERROR "Qt6_DIR is not set. Please set CMAKE_PREFIX_PATH or Qt6_DIR")
     endif()

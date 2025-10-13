@@ -121,13 +121,13 @@ namespace iengine {
         
         void set(const std::string& name, const UniformValue& value);
         void setUniforms(const std::map<std::string, UniformValue>& uniforms);
+        void initUniformSetters(); // 移到public，供OpenGLShaderProgram调用
         
     private:
         std::shared_ptr<OpenGLContext> context_;
         void* program_;
         std::map<std::string, std::function<void(const UniformValue&)>> uniformSetters_;
         
-        void initUniformSetters();
         void setUniformByType(unsigned int type, int location, const UniformValue& value);
     };
 }

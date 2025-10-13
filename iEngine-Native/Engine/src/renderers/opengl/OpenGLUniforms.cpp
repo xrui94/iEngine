@@ -1,6 +1,7 @@
 #include "iengine/renderers/opengl/OpenGLUniforms.h"
 #include "iengine/renderers/opengl/OpenGLContext.h"
 #include "iengine/math/Matrix4.h"
+#include "iengine/textures/Texture.h"
 
 #include <iostream>
 
@@ -121,6 +122,30 @@ namespace iengine {
                 const auto& vec = value.asVec();
                 if (vec.size() >= 16) {
                     context_->setUniformMatrix4fv(location, vec.data());
+                }
+                break;
+            }
+            case UniformValue::Type::TEXTURE: {
+                // 处理纹理uniform（参照Web版本）
+                auto texture = value.asTexture();
+                if (texture) {
+                    // 1. 上传纹理到GPU（如果还没有上传）
+                    if (texture->needsUpdate()) {
+                        texture->upload(context_);
+                    }
+                    
+                    // 2. 获取纹理单元（由Texture对象维护）
+                    int textureUnit = texture->getUnit();
+                    
+                    // 3. 激活纹理单元并绑定纹理
+                    context_->activeTexture(textureUnit);
+                    context_->bindTexture(texture->getGpuTexture());
+                    
+                    // 4. 设置uniform采样器的值为纹理单元索引
+                    context_->setUniform1i(location, textureUnit);
+                    
+                    std::cout << "OpenGLUniforms: Bound texture '" << texture->getName() 
+                              << "' to unit " << textureUnit << " for uniform location " << location << std::endl;
                 }
                 break;
             }
