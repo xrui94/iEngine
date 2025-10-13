@@ -34,6 +34,10 @@ namespace sandbox {
         void createToolBar();
         void onOrbitControlsSelected();
         void onFirstPersonControlsSelected();
+        
+        // 渲染模式切换
+        void onEventDrivenRenderingSelected();
+        void onContinuousRenderingSelected();
 
         // std::shared_ptr<QtWindow> qtWindow_;
         // 上边的qtWindow_成员变量会导致窗口关闭时崩溃，原因如下：
@@ -64,6 +68,9 @@ namespace sandbox {
         
         // 控制器模式状态
         bool isFirstPersonMode_;
+        
+        // 渲染模式状态
+        bool isContinuousRendering_;
         
         // 全局事件监听器（P键切换）
         std::shared_ptr<iengine::WindowEventListener> globalEventListener_;

@@ -49,7 +49,8 @@ namespace sandbox {
         , engine_(nullptr)
         , scene_(nullptr)
         , camera_(nullptr)
-        , isFirstPersonMode_(false) {
+        , isFirstPersonMode_(false)
+        , isContinuousRendering_(true) { // 默认启用连续渲染
         
         // 设置窗口属性
         setWindowTitle("iEngine Qt Sandbox");
@@ -104,9 +105,12 @@ namespace sandbox {
         // 关键：在 Qt 删除 widget 之前先清理所有依赖
         // 1. 首先清理事件监听器（避免悬空指针）
         if (qtWindow_) {
-            std::cout << "MainWindow: 清理QtWindow事件回调和监听器" << std::endl;
-            qtWindow_->setEventCallback(nullptr);
+            std::cout << "MainWindow: 清理QtWindow事件监听器" << std::endl;
+            // 【新版本】使用观察者模式，直接清理监听器
             qtWindow_->getEventDispatcher().clearEventListeners();
+            
+            // 【旧版本已弃用】通过回调函数清理
+            // qtWindow_->setEventCallback(nullptr);
             
             // 2. 清理 QtWindow 持有的 Engine 和 Scene 引用
             std::cout << "MainWindow: 清理QtWindow持有的引擎和场景引用" << std::endl;
@@ -297,6 +301,35 @@ namespace sandbox {
         connect(exitAction, &QAction::triggered, this, &QWidget::close);
         fileMenu->addAction(exitAction);
         
+        // 创建视图菜单
+        QMenu* viewMenu = menuBar()->addMenu("视图(&V)");
+        
+        // 渲染模式子菜单
+        QMenu* renderModeMenu = viewMenu->addMenu("渲染模式");
+        
+        // 事件驱动渲染选项
+        QAction* eventDrivenAction = new QAction("事件驱动渲染", this);
+        eventDrivenAction->setCheckable(true);
+        eventDrivenAction->setToolTip("只在有事件时才渲染，节省CPU资源");
+        connect(eventDrivenAction, &QAction::triggered, this, &MainWindow::onEventDrivenRenderingSelected);
+        
+        // 连续渲染选项
+        QAction* continuousAction = new QAction("连续渲染 (60FPS)", this);
+        continuousAction->setCheckable(true);
+        continuousAction->setChecked(true); // 默认启用
+        continuousAction->setToolTip("以60FPS持续渲染，适合3D交互场景");
+        connect(continuousAction, &QAction::triggered, this, &MainWindow::onContinuousRenderingSelected);
+        
+        // 添加到子菜单
+        renderModeMenu->addAction(eventDrivenAction);
+        renderModeMenu->addAction(continuousAction);
+        
+        // 创建按钮组实现互斥
+        QActionGroup* renderModeGroup = new QActionGroup(this);
+        renderModeGroup->addAction(eventDrivenAction);
+        renderModeGroup->addAction(continuousAction);
+        renderModeGroup->setExclusive(true);
+        
         // 创建帮助菜单
         QMenu* helpMenu = menuBar()->addMenu("&Help");
         
@@ -372,6 +405,22 @@ namespace sandbox {
     void MainWindow::onFirstPersonControlsSelected() {
         if (!isFirstPersonMode_) {
             switchControllerMode();
+        }
+    }
+    
+    void MainWindow::onEventDrivenRenderingSelected() {
+        if (isContinuousRendering_) {
+            isContinuousRendering_ = false;
+            qtWindow_->stopContinuousRendering();
+            std::cout << "切换到事件驱动渲染模式" << std::endl;
+        }
+    }
+    
+    void MainWindow::onContinuousRenderingSelected() {
+        if (!isContinuousRendering_) {
+            isContinuousRendering_ = true;
+            qtWindow_->startContinuousRendering();
+            std::cout << "切换到连续渲染模式 (60FPS)" << std::endl;
         }
     }
 

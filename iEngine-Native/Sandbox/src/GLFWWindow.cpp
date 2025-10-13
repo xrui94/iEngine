@@ -55,12 +55,18 @@ namespace sandbox {
         // 注册滚轮回调
         glfwSetScrollCallback(window_, [](GLFWwindow* w, double xoffset, double yoffset) {
             auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(w));
-            if (self && self->eventCallback_) {
+            if (self) {
+                // 【新版本】使用观察者模式分发事件
                 iengine::WindowEvent event;
                 event.type = iengine::WindowEventType::MouseScroll;
                 event.data.mouseScroll.xoffset = xoffset;
                 event.data.mouseScroll.yoffset = yoffset;
-                self->eventCallback_(event);
+                self->eventDispatcher_->dispatchEvent(event);
+                
+                // 【旧版本已弃用】通过回调函数分发事件（会导致双重处理）
+                // if (self->eventCallback_) {
+                //     self->eventCallback_(event);
+                // }
             }
         });
         
@@ -116,14 +122,19 @@ namespace sandbox {
     // 静态回调函数实现
     void GLFWWindow::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
-        if (self && self->eventCallback_) {
-            // 通过eventCallback_通知Engine窗口大小改变，对齐 Web 版本的 resize 事件
+        if (self) {
+            // 【新版本】使用观察者模式分发resize事件
             iengine::WindowEvent event;
             event.type = iengine::WindowEventType::Resize;
             event.data.resize.width = width;
             event.data.resize.height = height;
-            self->eventCallback_(event);
-            std::cout << "窗口大小调整为: " << width << "x" << height << ", 已通知 Engine" << std::endl;
+            self->eventDispatcher_->dispatchEvent(event);
+            std::cout << "窗口大小调整为: " << width << "x" << height << ", 已通过观察者模式通知" << std::endl;
+            
+            // 【旧版本已弃用】通过eventCallback_通知（会导致双重处理）
+            // if (self->eventCallback_) {
+            //     self->eventCallback_(event);
+            // }
         } else {
             std::cout << "窗口大小调整为: " << width << "x" << height << std::endl;
         }
@@ -135,8 +146,8 @@ namespace sandbox {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
-        if (self && self->eventCallback_) {
-            // 发送键盘事件到引擎
+        if (self) {
+            // 【新版本】使用观察者模式分发键盘事件
             iengine::WindowEvent event;
             event.type = iengine::WindowEventType::Key;
             event.data.key.key = key;
@@ -151,14 +162,19 @@ namespace sandbox {
             }
             
             event.data.key.mods = mods;
-            self->eventCallback_(event);
+            self->eventDispatcher_->dispatchEvent(event);
+            
+            // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+            // if (self->eventCallback_) {
+            //     self->eventCallback_(event);
+            // }
         }
     }
 
     void GLFWWindow::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
-        if (self && self->eventCallback_) {
-            // 发送鼠标按键事件
+        if (self) {
+            // 【新版本】使用观察者模式分发鼠标按键事件
             iengine::WindowEvent event;
             event.type = iengine::WindowEventType::MouseButton;
                 
@@ -184,19 +200,29 @@ namespace sandbox {
             event.data.mouseButton.x = x;
             event.data.mouseButton.y = y;
                 
-            self->eventCallback_(event);
+            self->eventDispatcher_->dispatchEvent(event);
+            
+            // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+            // if (self->eventCallback_) {
+            //     self->eventCallback_(event);
+            // }
         }
     }
 
     void GLFWWindow::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
-        if (self && self->eventCallback_) {
-            // 发送鼠标移动事件
+        if (self) {
+            // 【新版本】使用观察者模式分发鼠标移动事件
             iengine::WindowEvent event;
             event.type = iengine::WindowEventType::MouseMove;
             event.data.mouseMove.x = xpos;
             event.data.mouseMove.y = ypos;
-            self->eventCallback_(event);
+            self->eventDispatcher_->dispatchEvent(event);
+            
+            // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+            // if (self->eventCallback_) {
+            //     self->eventCallback_(event);
+            // }
         }
     }
 

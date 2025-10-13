@@ -156,6 +156,24 @@ namespace sandbox {
     void QtWindow::setScene(std::shared_ptr<iengine::Scene> scene) {
         scene_ = scene;
     }
+    
+    void QtWindow::startContinuousRendering() {
+        if (!renderTimer_->isActive()) {
+            renderTimer_->start();
+            std::cout << "QtWindow: 连续渲染已启动 (60FPS)" << std::endl;
+        }
+    }
+    
+    void QtWindow::stopContinuousRendering() {
+        if (renderTimer_->isActive()) {
+            renderTimer_->stop();
+            std::cout << "QtWindow: 连续渲染已停止，切换到事件驱动模式" << std::endl;
+        }
+    }
+    
+    bool QtWindow::isContinuousRendering() const {
+        return renderTimer_->isActive();
+    }
 
     //void QtWindow::render() {
     //    if (widget_) {
@@ -209,10 +227,10 @@ namespace sandbox {
         event.data.resize.height = h;
         eventDispatcher_->dispatchEvent(event);
         
-        // 向后兼容：如果有回调函数，也调用它
-        if (eventCallback_) {
-            eventCallback_(event);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(event);
+        // }
     }
 
     void QtWindow::paintGL() {
@@ -250,9 +268,10 @@ namespace sandbox {
             QOpenGLWidget::mousePressEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
 
     void QtWindow::mouseReleaseEvent(QMouseEvent* event) {
@@ -267,9 +286,10 @@ namespace sandbox {
             QOpenGLWidget::mouseReleaseEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
 
     void QtWindow::mouseMoveEvent(QMouseEvent* event) {
@@ -282,9 +302,10 @@ namespace sandbox {
             QOpenGLWidget::mouseMoveEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
 
     void QtWindow::wheelEvent(QWheelEvent* event) {
@@ -297,9 +318,10 @@ namespace sandbox {
             QOpenGLWidget::wheelEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
 
     void QtWindow::keyPressEvent(QKeyEvent* event) {
@@ -313,9 +335,10 @@ namespace sandbox {
             QOpenGLWidget::keyPressEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
 
     void QtWindow::keyReleaseEvent(QKeyEvent* event) {
@@ -329,9 +352,10 @@ namespace sandbox {
             QOpenGLWidget::keyReleaseEvent(event);
         }
         
-        if (eventCallback_) {
-            eventCallback_(windowEvent);
-        }
+        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
+        // if (eventCallback_) {
+        //     eventCallback_(windowEvent);
+        // }
     }
     
     // Qt事件转换辅助函数

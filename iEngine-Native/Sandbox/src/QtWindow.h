@@ -51,6 +51,11 @@ namespace sandbox {
 
         // 渲染相关
         void render();
+        
+        // 连续渲染控制
+        void startContinuousRendering();
+        void stopContinuousRendering();
+        bool isContinuousRendering() const;
 
     protected:
         // 内部初始化方法 - 设为公有以便内部Widget调用

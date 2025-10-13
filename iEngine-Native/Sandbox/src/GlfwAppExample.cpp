@@ -15,10 +15,25 @@
 // 简单的GLFW + iEngine应用程序
 namespace sandbox {
     
+    // 全局事件监听器类（用于P键切换控制器）
+    class GlobalEventListener : public iengine::WindowEventListener {
+    public:
+        explicit GlobalEventListener(std::atomic<bool>* switchFlag) : switchFlag_(switchFlag) {}
+        
+        bool onWindowEvent(const iengine::WindowEvent& event) override;
+        
+        int getPriority() const override {
+            return 0; // 最高优先级（数值越小优先级越高）
+        }
+        
+    private:
+        std::atomic<bool>* switchFlag_; // 切换标志（避免在事件回调中操作监听器列表导致死锁）
+    };
+    
     // GLFW应用程序类
     class GLFWApplication {
     public:
-        GLFWApplication() : window_(nullptr), engine_(nullptr), scene_(nullptr) {}
+        GLFWApplication() : window_(nullptr), engine_(nullptr), scene_(nullptr), shouldSwitchController_(false) {}
         
         ~GLFWApplication() {
             cleanup();
@@ -119,6 +134,12 @@ namespace sandbox {
                 // 处理事件
                 window_->pollEvents();
                 
+                // 检查是否需要切换控制器（在事件处理完成后，避免死锁）
+                if (shouldSwitchController_.load()) {
+                    shouldSwitchController_.store(false);
+                    switchControllerMode();
+                }
+                
                 // 渲染
                 render();
                 
@@ -139,6 +160,46 @@ namespace sandbox {
             std::cout << "GLFW + iEngine应用程序主循环结束" << std::endl;
         }
         
+        // 切换控制器模式（供主循环调用）
+        void switchControllerMode() {
+            std::cout << "\n=== switchControllerMode() 执行中 ===" << std::endl;
+            std::cout << "切换前模式: " << (isFirstPersonMode_ ? "第一人称" : "轨道") << std::endl;
+            
+            // 移除当前控制器的事件监听
+            if (isFirstPersonMode_) {
+                std::cout << "移除 FirstPersonControls 监听器..." << std::endl;
+                window_->removeEventListener(firstPersonControls_);
+            } else {
+                std::cout << "移除 OrbitControls 监听器..." << std::endl;
+                window_->removeEventListener(orbitControls_);
+            }
+            
+            // 切换模式
+            isFirstPersonMode_ = !isFirstPersonMode_;
+            std::cout << "切换后模式: " << (isFirstPersonMode_ ? "第一人称" : "轨道") << std::endl;
+            
+            // 添加新控制器的事件监听
+            if (isFirstPersonMode_) {
+                std::cout << "添加 FirstPersonControls 监听器..." << std::endl;
+                window_->addEventListener(firstPersonControls_);
+                std::cout << "\n=== 切换到第一人称控制器 ===" << std::endl;
+                std::cout << "操作说明：" << std::endl;
+                std::cout << "- 鼠标拖拽：控制视角" << std::endl;
+                std::cout << "- WASD：移动" << std::endl;
+                std::cout << "- 滚轮：前后移动" << std::endl;
+                std::cout << "- P键：切换回轨道控制器" << std::endl;
+            } else {
+                std::cout << "添加 OrbitControls 监听器..." << std::endl;
+                window_->addEventListener(orbitControls_);
+                std::cout << "\n=== 切换到轨道控制器 ===" << std::endl;
+                std::cout << "操作说明：" << std::endl;
+                std::cout << "- 鼠标拖拽：旋转视角" << std::endl;
+                std::cout << "- 滚轮：缩放" << std::endl;
+                std::cout << "- P键：切换到第一人称控制器" << std::endl;
+            }
+            std::cout << "=== switchControllerMode() 执行完成 ===\n" << std::endl;
+        }
+        
     private:
         std::shared_ptr<GLFWWindow> window_;
         std::shared_ptr<iengine::Engine> engine_;
@@ -146,7 +207,9 @@ namespace sandbox {
         std::shared_ptr<iengine::PerspectiveCamera> camera_;
         std::shared_ptr<iengine::OrbitControls> orbitControls_;        // 轨道控制器
         std::shared_ptr<iengine::FirstPersonControls> firstPersonControls_; // 第一人称控制器
+        std::shared_ptr<GlobalEventListener> globalEventListener_; // 全局事件监听器
         bool isFirstPersonMode_ = false; // 当前控制器模式（false=轨道，true=第一人称）
+        std::atomic<bool> shouldSwitchController_; // 切换控制器标志（原子操作，线程安全）
         
         bool setupScene() {
             if (!engine_) {
@@ -174,10 +237,19 @@ namespace sandbox {
                 std::cout << "- 第一人称控制器：支持WASD移动和鼠标视角" << std::endl;
                 std::cout << "- 按P键切换控制器模式" << std::endl;
                 
-                // 设置控制器切换事件监听
-                window_->setEventCallback([this](const iengine::WindowEvent& event) {
-                    this->handleGlobalEvent(event);
-                });
+                // 【新版本】使用观察者模式注册控制器事件监听器
+                window_->addEventListener(orbitControls_); // 默认激活轨道控制器
+                std::cout << "已注册OrbitControls监听器" << std::endl;
+                
+                // 创建并注册全局事件监听器（P键切换）
+                globalEventListener_ = std::make_shared<GlobalEventListener>(&shouldSwitchController_);
+                window_->addEventListener(globalEventListener_);
+                std::cout << "已注册GlobalEventListener，优先级: " << globalEventListener_->getPriority() << std::endl;
+                
+                // 【旧版本已弃用】通过回调函数处理事件（会导致双重处理）
+                // window_->setEventCallback([this](const iengine::WindowEvent& event) {
+                //     this->handleGlobalEvent(event);
+                // });
                 
                 // 1. 创建红色三角形
                 auto triangleGeometry = std::make_shared<iengine::Triangle>();
@@ -307,46 +379,44 @@ namespace sandbox {
             glfwTerminate();
         }
         
-        // 全局事件处理：处理控制器切换和其他全局事件
-        void handleGlobalEvent(const iengine::WindowEvent& event) {
-            // 处理P键切换控制器模式
-            if (event.type == iengine::WindowEventType::Key) {
-                //const int GLFW_KEY_P = 80;
-                if (event.data.key.key == GLFW_KEY_P && event.data.key.action == iengine::KeyAction::Press) {
-                    switchControllerMode();
-                    return; // 切换事件不传递给当前控制器
-                }
-            }
-            
-            // 将事件传递给当前激活的控制器
-            if (isFirstPersonMode_ && firstPersonControls_) {
-                firstPersonControls_->handleWindowEvent(event);
-            } else if (!isFirstPersonMode_ && orbitControls_) {
-                orbitControls_->handleWindowEvent(event);
-            }
-        }
-        
-        // 切换控制器模式
-        void switchControllerMode() {
-            isFirstPersonMode_ = !isFirstPersonMode_;
-            
-            if (isFirstPersonMode_) {
-                std::cout << "\\n=== 切换到第一人称控制器 ===" << std::endl;
-                std::cout << "操作说明：" << std::endl;
-                std::cout << "- 鼠标拖拽：控制视角" << std::endl;
-                std::cout << "- WASD：移动" << std::endl;
-                std::cout << "- 滚轮：前后移动" << std::endl;
-                std::cout << "- P键：切换回轨道控制器" << std::endl;
-            } else {
-                std::cout << "\\n=== 切换到轨道控制器 ===" << std::endl;
-                std::cout << "操作说明：" << std::endl;
-                std::cout << "- 鼠标拖拽：旋转视角" << std::endl;
-                std::cout << "- 滚轮：缩放" << std::endl;
-                std::cout << "- P键：切换到第一人称控制器" << std::endl;
-            }
-        }
+        // 【旧版本已弃用】全局事件处理：通过回调函数处理
+        // 新版本使用观察者模式的 GlobalEventListener
+        // void handleGlobalEvent(const iengine::WindowEvent& event) {
+        //     // 处理P键切换控制器模式
+        //     if (event.type == iengine::WindowEventType::Key) {
+        //         if (event.data.key.key == GLFW_KEY_P && event.data.key.action == iengine::KeyAction::Press) {
+        //             switchControllerMode();
+        //             return;
+        //         }
+        //     }
+        //     
+        //     // 将事件传递给当前激活的控制器
+        //     if (isFirstPersonMode_ && firstPersonControls_) {
+        //         firstPersonControls_->handleWindowEvent(event);
+        //     } else if (!isFirstPersonMode_ && orbitControls_) {
+        //         orbitControls_->handleWindowEvent(event);
+        //     }
+        // }
     };
     
+} // namespace sandbox
+
+// GlobalEventListener 实现（必须在 GLFWApplication 定义之后）
+namespace sandbox {
+    bool GlobalEventListener::onWindowEvent(const iengine::WindowEvent& event) {
+        // 处理P键切换控制器模式
+        if (event.type == iengine::WindowEventType::Key) {
+            // GLFW_KEY_P = 80
+            if (event.data.key.key == 80 && event.data.key.action == iengine::KeyAction::Press) {
+                std::cout << "GlobalEventListener: 检测到P键按下，设置切换标志" << std::endl;
+                if (switchFlag_) {
+                    switchFlag_->store(true); // 设置原子标志，由主循环处理切换
+                }
+                return true; // 阻止事件继续传播
+            }
+        }
+        return false; // 不阻止其他事件
+    }
 } // namespace sandbox
 
 // 设置控制台编码以支持中文输出
