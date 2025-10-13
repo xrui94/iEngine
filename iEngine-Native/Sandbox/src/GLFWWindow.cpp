@@ -9,7 +9,8 @@ namespace sandbox {
     GLFWWindow::GLFWWindow()
         : window_(nullptr)
         , context_(nullptr)
-        , eventCallback_(nullptr) {
+        , eventCallback_(nullptr)
+        , eventDispatcher_(std::make_unique<iengine::WindowEventDispatcher>()) {
     }
 
     GLFWWindow::~GLFWWindow() {
@@ -92,6 +93,14 @@ namespace sandbox {
 
     void GLFWWindow::setEventCallback(const iengine::WindowEventCallback& callback) {
         eventCallback_ = callback;
+    }
+    
+    iengine::WindowEventDispatcher& GLFWWindow::getEventDispatcher() {
+        return *eventDispatcher_;
+    }
+
+    const iengine::WindowEventDispatcher& GLFWWindow::getEventDispatcher() const {
+        return *eventDispatcher_;
     }
 
     void GLFWWindow::pollEvents() {

@@ -15,6 +15,7 @@ namespace sandbox {
     MainWindow::MainWindow(QWidget* parent)
         : QMainWindow(parent)
         , qtWindow_(nullptr)
+        , qtWindowWrapper_(nullptr)
         , engine_(nullptr)
         , scene_(nullptr)
         , camera_(nullptr) {
@@ -23,16 +24,16 @@ namespace sandbox {
         setWindowTitle("iEngine Qt Sandbox");
         resize(1024, 768);
         
-        // 创建Qt窗口抽象
-        qtWindow_ = std::make_shared<QtWindow>(this);
-        //if (!qtWindow_->initialize()) {
-        //    std::cerr << "Failed to initialize QtWindow" << std::endl;
-        //    return;
-        //}
+        // 创建Qt窗口抽象（Qt通过父子关系管理生命周期）
+        qtWindow_ = new QtWindow(this);
+        
+        // 创建一个不拥有所有权的 shared_ptr 包装器（使用空删除器）
+        qtWindowWrapper_ = std::shared_ptr<iengine::WindowInterface>(
+            qtWindow_, [](iengine::WindowInterface*) { /* 不删除，Qt会管理 */ }
+        );
         
         // 设置中心部件
-        //QWidget* centralWidget = new QWidget(this);
-        setCentralWidget(qtWindow_.get());
+        setCentralWidget(qtWindow_);
         
         // 创建布局
         //QVBoxLayout* layout = new QVBoxLayout(centralWidget);
@@ -64,20 +65,43 @@ namespace sandbox {
     }
     
     MainWindow::~MainWindow() {
-        // 清理资源
-        // 关键：在销毁任何可能被 eventCallback_ 捕获的对象之前，
-        // 先清空 QtWindow 的事件回调！
-        std::cout << "MainWindow destructor called." << std::endl;
+        std::cout << "MainWindow: 开始析构" << std::endl;
+        
+        // 关键：在 Qt 删除 widget 之前先清理所有依赖
+        // 1. 首先清理事件监听器（避免悬空指针）
         if (qtWindow_) {
-            std::cout << "qtWindow_ is valid, clearing callback..." << std::endl;
+            std::cout << "MainWindow: 清理QtWindow事件回调和监听器" << std::endl;
             qtWindow_->setEventCallback(nullptr);
+            qtWindow_->getEventDispatcher().clearEventListeners();
+            
+            // 2. 清理 QtWindow 持有的 Engine 和 Scene 引用
+            std::cout << "MainWindow: 清理QtWindow持有的引擎和场景引用" << std::endl;
+            qtWindow_->setEngine(nullptr);
+            qtWindow_->setScene(nullptr);
         }
-        else {
-            std::cout << "qtWindow_ is nullptr!" << std::endl;
-        }
-
-        // 现在可以安全销毁 controllers、scene、engine 等
-        // （shared_ptr 会自动按顺序释放）
+        
+        // 3. 清理控制器（它们持有window和camera的引用）
+        std::cout << "MainWindow: 清理控制器" << std::endl;
+        orbitControls_.reset();
+        firstPersonControls_.reset();
+        
+        // 4. 清理相机
+        std::cout << "MainWindow: 清理相机" << std::endl;
+        camera_.reset();
+        
+        // 5. 清理场景（它持有Context引用）
+        std::cout << "MainWindow: 清理场景" << std::endl;
+        scene_.reset();
+        
+        // 6. 清理引擎
+        std::cout << "MainWindow: 清理引擎" << std::endl;
+        engine_.reset();
+        
+        // 7. Qt 会自动删除 qtWindow_（通过父子关系）
+        // 我们不需要手动删除
+        std::cout << "MainWindow: 等待Qt清理QtWindow" << std::endl;
+        
+        std::cout << "MainWindow: 析构完成" << std::endl;
     }
     
     void MainWindow::initializeEngine() {
@@ -100,8 +124,8 @@ namespace sandbox {
         }
         
         try {
-            // 创建场景（Qt模式，不使用GLFW窗口）
-            scene_ = std::make_shared<iengine::Scene>(qtWindow_);
+            // 创建场景（使用包装器）
+            scene_ = std::make_shared<iengine::Scene>(qtWindowWrapper_);
             
             // 创建相机
             camera_ = std::make_shared<iengine::PerspectiveCamera>(60.0f, 4.0f / 3.0f, 0.1f, 100.0f);
@@ -109,9 +133,9 @@ namespace sandbox {
             camera_->lookAt(0.0f, 0.0f, 0.0f);
             scene_->setActiveCamera(camera_);
 
-            // 创建轨道控制器和第一人称控制器（使用引擎的抽象接口）
-            orbitControls_ = std::make_shared<iengine::OrbitControls>(camera_, qtWindow_);
-            firstPersonControls_ = std::make_shared<iengine::FirstPersonControls>(camera_, qtWindow_);
+            // 创建轨道控制器和第一人称控制器（使用包装器）
+            orbitControls_ = std::make_shared<iengine::OrbitControls>(camera_, qtWindowWrapper_);
+            firstPersonControls_ = std::make_shared<iengine::FirstPersonControls>(camera_, qtWindowWrapper_);
             
             //// 创建几何体
             //auto cubeGeometry = std::make_shared<iengine::Cube>(1.0f);

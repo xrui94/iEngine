@@ -8,14 +8,18 @@
 namespace iengine {
     class WindowInterface; // 前向声明
     
-    class FirstPersonControls : public BaseControls {
+    class FirstPersonControls : public BaseControls, public WindowEventListener {
     public:
         FirstPersonControls(std::shared_ptr<PerspectiveCamera> camera, std::shared_ptr<WindowInterface> window);
-        ~FirstPersonControls();
+        ~FirstPersonControls() override;
         
         void dispose() override;
         
-        // 事件处理方法（公开，供事件回调调用）
+        // WindowEventListener 接口实现
+        bool onWindowEvent(const WindowEvent& event) override;
+        int getPriority() const override { return 100; } // 控制器优先级
+        
+        // 向后兼容的事件处理方法
         void handleWindowEvent(const WindowEvent& event);
         
     private:

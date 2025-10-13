@@ -51,6 +51,7 @@ namespace sandbox {
         : QOpenGLWidget(parent)
         , context_(nullptr)
         , eventCallback_(nullptr)
+        , eventDispatcher_(std::make_unique<iengine::WindowEventDispatcher>())
         , engine_(nullptr)
         , scene_(nullptr)
         , shouldClose_(false)
@@ -63,13 +64,35 @@ namespace sandbox {
         format.setVersion(3, 3);
         format.setProfile(QSurfaceFormat::CoreProfile);
         setFormat(format);
+        
+        // 设置焦点，以便接收键盘事件
+        setFocusPolicy(Qt::StrongFocus);
+        
+        std::cout << "QtWindow: 构造函数完成，使用观察者模式事件系统" << std::endl;
     }
 
     QtWindow::~QtWindow() {
-        //if (widget_) {
-        //    delete widget_;
-        //    widget_ = nullptr;
-        //}
+        std::cout << "QtWindow: 开始析构" << std::endl;
+        
+        // 安全地清理事件监听器
+        if (eventDispatcher_) {
+            eventDispatcher_->clearEventListeners();
+            std::cout << "QtWindow: 已清理所有事件监听器" << std::endl;
+        }
+        
+        // 清理引擎和场景引用（但不释放它们）
+        scene_.reset();
+        engine_.reset();
+        std::cout << "QtWindow: 已清理引擎和场景引用" << std::endl;
+        
+        // 最后清理 Context（只有在没有其他持有者时才会真正释放）
+        if (context_) {
+            std::cout << "QtWindow: 准备释放 Context，use_count=" << context_.use_count() << std::endl;
+            context_.reset();
+            std::cout << "QtWindow: Context 引用已清理" << std::endl;
+        }
+        
+        std::cout << "QtWindow: 析构完成" << std::endl;
     }
 
     //bool QtWindow::initialize(QWidget* parent) {
@@ -105,6 +128,14 @@ namespace sandbox {
 
     void QtWindow::setEventCallback(const iengine::WindowEventCallback& callback) {
         eventCallback_ = callback;
+    }
+    
+    iengine::WindowEventDispatcher& QtWindow::getEventDispatcher() {
+        return *eventDispatcher_;
+    }
+
+    const iengine::WindowEventDispatcher& QtWindow::getEventDispatcher() const {
+        return *eventDispatcher_;
     }
 
     void QtWindow::setEngine(std::shared_ptr<iengine::Engine> engine) {
@@ -155,6 +186,18 @@ namespace sandbox {
     void QtWindow::resizeGL(int w, int h) {
         glViewport(0, 0, w, h);
         std::cout << "Qt窗口大小调整为: " << w << "x" << h << std::endl;
+        
+        // 分发resize事件
+        iengine::WindowEvent event;
+        event.type = iengine::WindowEventType::Resize;
+        event.data.resize.width = w;
+        event.data.resize.height = h;
+        eventDispatcher_->dispatchEvent(event);
+        
+        // 向后兼容：如果有回调函数，也调用它
+        if (eventCallback_) {
+            eventCallback_(event);
+        }
     }
 
     void QtWindow::paintGL() {
@@ -176,6 +219,130 @@ namespace sandbox {
             // 如果引擎或场景未初始化，显示默认背景
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+    }
+
+    // Qt输入事件处理
+    void QtWindow::mousePressEvent(QMouseEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::MouseButton;
+        windowEvent.data.mouseButton.button = qtButtonToEngineButton(event->button());
+        windowEvent.data.mouseButton.action = iengine::KeyAction::Press;
+        windowEvent.data.mouseButton.x = event->x();
+        windowEvent.data.mouseButton.y = event->y();
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::mousePressEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+
+    void QtWindow::mouseReleaseEvent(QMouseEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::MouseButton;
+        windowEvent.data.mouseButton.button = qtButtonToEngineButton(event->button());
+        windowEvent.data.mouseButton.action = iengine::KeyAction::Release;
+        windowEvent.data.mouseButton.x = event->x();
+        windowEvent.data.mouseButton.y = event->y();
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::mouseReleaseEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+
+    void QtWindow::mouseMoveEvent(QMouseEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::MouseMove;
+        windowEvent.data.mouseMove.x = event->x();
+        windowEvent.data.mouseMove.y = event->y();
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::mouseMoveEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+
+    void QtWindow::wheelEvent(QWheelEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::MouseScroll;
+        windowEvent.data.mouseScroll.xoffset = event->angleDelta().x() / 120.0;
+        windowEvent.data.mouseScroll.yoffset = event->angleDelta().y() / 120.0;
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::wheelEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+
+    void QtWindow::keyPressEvent(QKeyEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::Key;
+        windowEvent.data.key.key = qtKeyToEngineKey(event->key());
+        windowEvent.data.key.action = iengine::KeyAction::Press;
+        windowEvent.data.key.mods = 0;
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::keyPressEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+
+    void QtWindow::keyReleaseEvent(QKeyEvent* event) {
+        iengine::WindowEvent windowEvent;
+        windowEvent.type = iengine::WindowEventType::Key;
+        windowEvent.data.key.key = qtKeyToEngineKey(event->key());
+        windowEvent.data.key.action = iengine::KeyAction::Release;
+        windowEvent.data.key.mods = 0;
+        
+        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
+            QOpenGLWidget::keyReleaseEvent(event);
+        }
+        
+        if (eventCallback_) {
+            eventCallback_(windowEvent);
+        }
+    }
+    
+    // Qt事件转换辅助函数
+    iengine::MouseButton QtWindow::qtButtonToEngineButton(Qt::MouseButton button) {
+        switch (button) {
+            case Qt::LeftButton: return iengine::MouseButton::Left;
+            case Qt::RightButton: return iengine::MouseButton::Right;
+            case Qt::MiddleButton: return iengine::MouseButton::Middle;
+            default: return iengine::MouseButton::Left;
+        }
+    }
+
+    iengine::KeyAction QtWindow::qtActionToEngineAction(bool pressed) {
+        return pressed ? iengine::KeyAction::Press : iengine::KeyAction::Release;
+    }
+
+    int QtWindow::qtKeyToEngineKey(int qtKey) {
+        // 简单映射，可以根据需要扩展
+        switch (qtKey) {
+            case Qt::Key_W: return 87; // 'W'
+            case Qt::Key_A: return 65; // 'A'
+            case Qt::Key_S: return 83; // 'S'
+            case Qt::Key_D: return 68; // 'D'
+            case Qt::Key_P: return 80; // 'P'
+            case Qt::Key_Escape: return 256; // ESC
+            default: return qtKey;
         }
     }
 

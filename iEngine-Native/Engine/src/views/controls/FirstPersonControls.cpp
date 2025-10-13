@@ -48,6 +48,14 @@ namespace iengine {
         }
     }
     
+    bool FirstPersonControls::onWindowEvent(const WindowEvent& event) {
+        // 直接调用现有的处理逻辑
+        handleWindowEvent(event);
+        
+        // 返回false表示不阻断事件传播，允许其他监听器处理
+        return false;
+    }
+    
     void FirstPersonControls::handleWindowEvent(const WindowEvent& event) {
         switch (event.type) {
             case WindowEventType::MouseButton:

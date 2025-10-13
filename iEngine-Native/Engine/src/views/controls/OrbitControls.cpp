@@ -45,6 +45,15 @@ namespace iengine {
         }
     }
     
+    bool OrbitControls::onWindowEvent(const WindowEvent& event) {
+        // 直接调用现有的处理逻辑
+        handleWindowEvent(event);
+        
+        // 返回false表示不阻断事件传播，允许其他监听器处理
+        // 如果需要阻断特定事件（比如鼠标拖拽），可以根据事件类型返回true
+        return false;
+    }
+    
     void OrbitControls::handleWindowEvent(const WindowEvent& event) {
         switch (event.type) {
             case WindowEventType::MouseButton:

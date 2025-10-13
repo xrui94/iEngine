@@ -34,6 +34,10 @@ namespace sandbox {
         std::shared_ptr<iengine::Context> getContext() const override;
         void makeContextCurrent() override;
         void setEventCallback(const iengine::WindowEventCallback& callback) override;
+        
+        // 观察者模式事件接口实现
+        iengine::WindowEventDispatcher& getEventDispatcher() override;
+        const iengine::WindowEventDispatcher& getEventDispatcher() const override;
 
         // GLFW特有的方法
         GLFWwindow* getGLFWHandle() const { return window_; }
@@ -44,6 +48,7 @@ namespace sandbox {
         GLFWwindow* window_;
         std::shared_ptr<iengine::Context> context_;
         iengine::WindowEventCallback eventCallback_;
+        std::unique_ptr<iengine::WindowEventDispatcher> eventDispatcher_;
 
         // 静态GLFW回调函数
         static void framebufferSizeCallback(GLFWwindow* window, int width, int height);

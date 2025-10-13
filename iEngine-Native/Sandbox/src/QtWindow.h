@@ -3,6 +3,9 @@
 #include <glad/glad.h>  // GLAD必须在所有OpenGL相关头文件之前
 #include <iengine/iengine.h>
 #include <QOpenGLWidget>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QWheelEvent>
 #include <memory>
 
 // 前向声明
@@ -35,6 +38,10 @@ namespace sandbox {
         std::shared_ptr<iengine::Context> getContext() const override;
         void makeContextCurrent() override;
         void setEventCallback(const iengine::WindowEventCallback& callback) override;
+        
+        // 观察者模式事件接口实现
+        iengine::WindowEventDispatcher& getEventDispatcher() override;
+        const iengine::WindowEventDispatcher& getEventDispatcher() const override;
 
         // Qt特有的方法
         //QOpenGLWidget* getQtWidget() const { return widget_; }
@@ -44,20 +51,34 @@ namespace sandbox {
         // 渲染相关
         void render();
 
-	protected:
+    protected:
         // 内部初始化方法 - 设为公有以便内部Widget调用
         void initializeGL() override;
         void resizeGL(int w, int h) override;
         void paintGL() override;
+        
+        // Qt输入事件处理
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void wheelEvent(QWheelEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
     private:
         //QOpenGLWidget* widget_;
         std::shared_ptr<iengine::Context> context_;
         iengine::WindowEventCallback eventCallback_;
+        std::unique_ptr<iengine::WindowEventDispatcher> eventDispatcher_;
         std::shared_ptr<iengine::Engine> engine_;
         std::shared_ptr<iengine::Scene> scene_;
         bool shouldClose_;
         bool initialized_;
+        
+        // 转换Qt事件到引擎事件
+        iengine::MouseButton qtButtonToEngineButton(Qt::MouseButton button);
+        iengine::KeyAction qtActionToEngineAction(bool pressed);
+        int qtKeyToEngineKey(int qtKey);
     };
 
 } // namespace sandbox

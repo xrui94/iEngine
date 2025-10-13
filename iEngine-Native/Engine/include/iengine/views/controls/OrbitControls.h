@@ -9,14 +9,18 @@
 namespace iengine {
     class WindowInterface; // 前向声明
     
-    class OrbitControls : public BaseControls {
+    class OrbitControls : public BaseControls, public WindowEventListener {
     public:
         OrbitControls(std::shared_ptr<PerspectiveCamera> camera, std::shared_ptr<WindowInterface> window);
-        ~OrbitControls();
+        ~OrbitControls() override;
         
         void dispose() override;
         
-        // 事件处理方法（公开，供事件回调调用）
+        // WindowEventListener 接口实现
+        bool onWindowEvent(const WindowEvent& event) override;
+        int getPriority() const override { return 100; } // 控制器优先级
+        
+        // 向后兼容的事件处理方法
         void handleWindowEvent(const WindowEvent& event);
         
     private:
