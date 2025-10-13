@@ -11,7 +11,6 @@
 
 #include <iostream>
 #include <memory>
-#include <filesystem>
 
 // 简单的GLFW + iEngine应用程序
 namespace sandbox {
@@ -213,8 +212,8 @@ namespace sandbox {
                 texOptions.name = "WoodTexture";
                 texOptions.sourcePath = "./assets/textures/Wood048_1K-PNG/Wood048_1K-PNG_Color.png";
                 auto woodTexture = std::make_shared<iengine::Texture>(texOptions);
-                // 设置纹理单元（参照Web版本）
-                woodTexture->setUnit(0);
+                //// 设置纹理单元（参照Web版本）
+				//woodTexture->setUnit(0);  // 外部不应该显示设置纹理单元，应该由引擎内部维护
                 cubeParams.baseColorMap = woodTexture;
                 
                 std::cout << "正在创建带贴图的PBR材质..." << std::endl;
@@ -366,9 +365,6 @@ void setupConsoleEncoding() {
 int main() {
     // 首先设置控制台编码
     setupConsoleEncoding();
-    
-    // 调试：输出当前工作目录
-    std::cout << "当前工作目录：" << std::filesystem::current_path() << std::endl;
     
     try {
         std::cout << "=== iEngine GLFW + OpenGL 应用程序示例 ===" << std::endl;
