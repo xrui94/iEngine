@@ -11,6 +11,7 @@ namespace iengine {
 	class OrbitControls;
 	class FirstPersonControls;
     class WindowInterface;  // 添加 WindowInterface 的前向声明
+    class WindowEventListener;
 }
 
 namespace sandbox {
@@ -22,11 +23,17 @@ namespace sandbox {
     public:
         explicit MainWindow(QWidget* parent = nullptr);
         ~MainWindow();
+        
+        // 公开方法：允许全局监听器调用
+        void switchControllerMode();
 
     private:
         void initializeEngine();
         void setupScene();
         void createMenus();
+        void createToolBar();
+        void onOrbitControlsSelected();
+        void onFirstPersonControlsSelected();
 
         // std::shared_ptr<QtWindow> qtWindow_;
         // 上边的qtWindow_成员变量会导致窗口关闭时崩溃，原因如下：
@@ -54,6 +61,12 @@ namespace sandbox {
         std::shared_ptr<iengine::PerspectiveCamera> camera_;
         std::shared_ptr<iengine::OrbitControls> orbitControls_;        // 轨道控制器
         std::shared_ptr<iengine::FirstPersonControls> firstPersonControls_; // 第一人称控制器
+        
+        // 控制器模式状态
+        bool isFirstPersonMode_;
+        
+        // 全局事件监听器（P键切换）
+        std::shared_ptr<iengine::WindowEventListener> globalEventListener_;
     };
 
 } // namespace sandbox

@@ -26,12 +26,13 @@ namespace iengine {
         std::cout << "FirstPersonControls: 相机位置设置为 (" << currentPosition_.x 
                   << ", " << currentPosition_.y << ", " << currentPosition_.z << ")" << std::endl;
         
+        // 注释掉旧的回调机制，改用观察者模式
         // 使用lambda捕获this指针来绑定事件处理器
-        window_->setEventCallback([this](const WindowEvent& event) {
-            this->handleWindowEvent(event);
-        });
+        // window_->setEventCallback([this](const WindowEvent& event) {
+        //     this->handleWindowEvent(event);
+        // });
         
-        std::cout << "FirstPersonControls: 初始化完成，支持WASD移动和鼠标视角控制" << std::endl;
+        std::cout << "FirstPersonControls: 初始化完成（使用观察者模式），支持WASD移动和鼠标视角控制" << std::endl;
         
         // 保证初始状态
         updateCamera();
@@ -42,10 +43,10 @@ namespace iengine {
     }
     
     void FirstPersonControls::dispose() {
-        // 移除事件监听，重置窗口事件回调
-        if (window_) {
-            window_->setEventCallback(nullptr);
-        }
+        // 不再需要移除事件监听，因为现在使用观察者模式
+        // if (window_) {
+        //     window_->setEventCallback(nullptr);
+        // }
     }
     
     bool FirstPersonControls::onWindowEvent(const WindowEvent& event) {

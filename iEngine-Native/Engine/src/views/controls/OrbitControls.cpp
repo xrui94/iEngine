@@ -20,15 +20,15 @@ namespace iengine {
         theta_ = std::atan2(dx, dz);
         phi_ = std::acos(dy / radius_);
         
-        // 注册窗口事件回调，使用引擎的抽象接口
-        if (window_) {
-            window_->setEventCallback([this](const WindowEvent& event) {
-                this->handleWindowEvent(event);
-            });
-            std::cout << "OrbitControls: 已注册窗口事件回调，支持鼠标交互" << std::endl;
-        }
+        // 注释掉旧的回调机制，改用观察者模式
+        // if (window_) {
+        //     window_->setEventCallback([this](const WindowEvent& event) {
+        //         this->handleWindowEvent(event);
+        //     });
+        //     std::cout << "OrbitControls: 已注册窗口事件回调，支持鼠标交互" << std::endl;
+        // }
         
-        std::cout << "OrbitControls: 初始化完成，半径=" << radius_ << ", theta=" << theta_ << ", phi=" << phi_ << std::endl;
+        std::cout << "OrbitControls: 初始化完成（使用观察者模式），半径=" << radius_ << ", theta=" << theta_ << ", phi=" << phi_ << std::endl;
         
         // 保证初始状态
         updateCamera();
@@ -39,10 +39,10 @@ namespace iengine {
     }
     
     void OrbitControls::dispose() {
-        // 移除事件监听，重置窗口事件回调
-        if (window_) {
-            window_->setEventCallback(nullptr);
-        }
+        // 不再需要移除事件监听，因为现在使用观察者模式
+        // if (window_) {
+        //     window_->setEventCallback(nullptr);
+        // }
     }
     
     bool OrbitControls::onWindowEvent(const WindowEvent& event) {

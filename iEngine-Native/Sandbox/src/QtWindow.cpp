@@ -4,6 +4,10 @@
 #include <QOpenGLWidget>
 #include <QOpenGLContext>
 #include <QSurfaceFormat>
+#include <QTimer>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QWheelEvent>
 // 注意：glad必须在Qt的OpenGL头文件之前包含，以避免冲突
 #include <iostream>
 
@@ -56,6 +60,7 @@ namespace sandbox {
         , scene_(nullptr)
         , shouldClose_(false)
         , initialized_(false)
+        , renderTimer_(new QTimer(this))
     {
         // 设置 OpenGL 格式（必须在 widget 创建后）
         QSurfaceFormat format;
@@ -68,7 +73,13 @@ namespace sandbox {
         // 设置焦点，以便接收键盘事件
         setFocusPolicy(Qt::StrongFocus);
         
-        std::cout << "QtWindow: 构造函数完成，使用观察者模式事件系统" << std::endl;
+        // 设置连续渲染定时器（60FPS）
+        connect(renderTimer_, &QTimer::timeout, this, [this]() {
+            this->update();
+        });
+        renderTimer_->setInterval(16); // 约60FPS (1000ms/60 ≈ 16ms)
+        
+        std::cout << "QtWindow: 构造函数完成，使用观察者模式事件系统和连续渲染" << std::endl;
     }
 
     QtWindow::~QtWindow() {
@@ -181,6 +192,10 @@ namespace sandbox {
         initialized_ = true;
 
         engine_->start();
+        
+        // 启动连续渲染定时器
+        renderTimer_->start();
+        std::cout << "QtWindow: 连续渲染定时器已启动 (60FPS)" << std::endl;
     }
 
     void QtWindow::resizeGL(int w, int h) {

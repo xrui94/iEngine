@@ -8,9 +8,39 @@
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QToolBar>
+#include <QButtonGroup>
+#include <QActionGroup>
 #include <iostream>
 
 namespace sandbox {
+
+    // 全局事件监听器（P键切换控制器）
+    class GlobalEventListener : public iengine::WindowEventListener {
+    public:
+        explicit GlobalEventListener(MainWindow* mainWindow) : mainWindow_(mainWindow) {}
+        
+        bool onWindowEvent(const iengine::WindowEvent& event) override {
+            // 监听P键按下事件
+            if (event.type == iengine::WindowEventType::Key && 
+                event.data.key.action == iengine::KeyAction::Press &&
+                event.data.key.key == 80) { // P键的键码是80
+                
+                if (mainWindow_) {
+                    mainWindow_->switchControllerMode();
+                }
+                return true; // 阻止事件继续传播
+            }
+            return false; // 允许其他监听器处理
+        }
+        
+        int getPriority() const override {
+            return 0; // 最高优先级，在控制器之前处理
+        }
+        
+    private:
+        MainWindow* mainWindow_;
+    };
 
     MainWindow::MainWindow(QWidget* parent)
         : QMainWindow(parent)
@@ -18,7 +48,8 @@ namespace sandbox {
         , qtWindowWrapper_(nullptr)
         , engine_(nullptr)
         , scene_(nullptr)
-        , camera_(nullptr) {
+        , camera_(nullptr)
+        , isFirstPersonMode_(false) {
         
         // 设置窗口属性
         setWindowTitle("iEngine Qt Sandbox");
@@ -59,6 +90,9 @@ namespace sandbox {
         
         // 创建菜单栏
         createMenus();
+        
+        // 创建工具栏
+        createToolBar();
 
         // 设置场景
         setupScene();
@@ -136,6 +170,15 @@ namespace sandbox {
             // 创建轨道控制器和第一人称控制器（使用包装器）
             orbitControls_ = std::make_shared<iengine::OrbitControls>(camera_, qtWindowWrapper_);
             firstPersonControls_ = std::make_shared<iengine::FirstPersonControls>(camera_, qtWindowWrapper_);
+            
+            // 初始化为轨道控制器模式
+            qtWindow_->addEventListener(orbitControls_);
+            
+            // 创建并注册全局事件监听器（P键切换）
+            globalEventListener_ = std::make_shared<GlobalEventListener>(this);
+            qtWindow_->addEventListener(globalEventListener_);
+            
+            std::cout << "当前模式：轨道控制器 - 鼠标拖拽旋转、滚轮缩放\n快捷键：P键切换" << std::endl;
             
             //// 创建几何体
             //auto cubeGeometry = std::make_shared<iengine::Cube>(1.0f);
@@ -262,6 +305,74 @@ namespace sandbox {
             // 简单的关于对话框
         });
         helpMenu->addAction(aboutAction);
+    }
+    
+    void MainWindow::createToolBar() {
+        // 创建主工具栏
+        QToolBar* mainToolBar = addToolBar("控制器");
+        mainToolBar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        
+        // 轨道控制器按钮
+        QAction* orbitAction = new QAction("轨道控制", this);
+        orbitAction->setCheckable(true);
+        orbitAction->setChecked(true); // 默认选中
+        orbitAction->setToolTip("轨道控制器 - 鼠标拖拽旋转、滚轮缩放\n快捷键：P键切换");
+        connect(orbitAction, &QAction::triggered, this, &MainWindow::onOrbitControlsSelected);
+        
+        // 第一人称控制器按钮
+        QAction* fpAction = new QAction("第一人称", this);
+        fpAction->setCheckable(true);
+        fpAction->setToolTip("第一人称控制器 - WASD移动、鼠标看向\n快捷键：P键切换");
+        connect(fpAction, &QAction::triggered, this, &MainWindow::onFirstPersonControlsSelected);
+        
+        // 添加到工具栏
+        mainToolBar->addAction(orbitAction);
+        mainToolBar->addAction(fpAction);
+        
+        // 创建按钮组实现互斥
+        QActionGroup* controllerGroup = new QActionGroup(this);
+        controllerGroup->addAction(orbitAction);
+        controllerGroup->addAction(fpAction);
+        controllerGroup->setExclusive(true);
+        
+        // 添加分隔符
+        mainToolBar->addSeparator();
+        
+        // 关于按钮
+        QAction* aboutAction = new QAction("关于", this);
+        aboutAction->setToolTip("关于 iEngine");
+        connect(aboutAction, &QAction::triggered, [this]() {
+            // TODO: 显示关于对话框
+        });
+        mainToolBar->addAction(aboutAction);
+    }
+    
+    void MainWindow::switchControllerMode() {
+        if (isFirstPersonMode_) {
+            // 切换到轨道控制器
+            qtWindow_->removeEventListener(firstPersonControls_);
+            qtWindow_->addEventListener(orbitControls_);
+            isFirstPersonMode_ = false;
+            std::cout << "切换到轨道控制器模式 - 鼠标拖拽旋转、滚轮缩放" << std::endl;
+        } else {
+            // 切换到第一人称控制器
+            qtWindow_->removeEventListener(orbitControls_);
+            qtWindow_->addEventListener(firstPersonControls_);
+            isFirstPersonMode_ = true;
+            std::cout << "切换到第一人称控制器模式 - WASD移动、鼠标看向" << std::endl;
+        }
+    }
+    
+    void MainWindow::onOrbitControlsSelected() {
+        if (isFirstPersonMode_) {
+            switchControllerMode();
+        }
+    }
+    
+    void MainWindow::onFirstPersonControlsSelected() {
+        if (!isFirstPersonMode_) {
+            switchControllerMode();
+        }
     }
 
 } // namespace sandbox

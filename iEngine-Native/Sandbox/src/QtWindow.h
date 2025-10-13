@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWheelEvent>
+#include <QTimer>
 #include <memory>
 
 // 前向声明
@@ -74,6 +75,9 @@ namespace sandbox {
         std::shared_ptr<iengine::Scene> scene_;
         bool shouldClose_;
         bool initialized_;
+        
+        // 连续渲染定时器
+        QTimer* renderTimer_;
         
         // 转换Qt事件到引擎事件
         iengine::MouseButton qtButtonToEngineButton(Qt::MouseButton button);
