@@ -54,7 +54,7 @@ namespace iengine {
         virtual std::map<std::string, UniformValue> getUniforms(
             std::shared_ptr<Context> context,
             std::shared_ptr<Camera> camera,
-            std::shared_ptr<Mesh> mesh,
+            std::shared_ptr<class Model> model,  // 改为传递 Model 而不是 Mesh
             const std::vector<std::shared_ptr<Light>>& lights) = 0;
         virtual TextureInfo getTextures() = 0;
     };

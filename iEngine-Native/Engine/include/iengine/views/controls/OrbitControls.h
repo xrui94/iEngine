@@ -3,19 +3,25 @@
 #include "BaseControls.h"
 #include "../cameras/PerspectiveCamera.h"
 #include "../../math/Vector3.h"
+#include "../../windowing/Window.h"
 #include <memory>
 
 namespace iengine {
+    class WindowInterface; // 前向声明
+    
     class OrbitControls : public BaseControls {
     public:
-        OrbitControls(std::shared_ptr<PerspectiveCamera> camera, void* domElement);
+        OrbitControls(std::shared_ptr<PerspectiveCamera> camera, std::shared_ptr<WindowInterface> window);
         ~OrbitControls();
         
         void dispose() override;
         
+        // 事件处理方法（公开，供事件回调调用）
+        void handleWindowEvent(const WindowEvent& event);
+        
     private:
         std::shared_ptr<PerspectiveCamera> camera_;
-        void* domElement_;
+        std::shared_ptr<WindowInterface> window_;
         Vector3 target_ = Vector3(0, 0, 0);
         bool isDragging_ = false;
         float lastX_ = 0;

@@ -128,5 +128,6 @@ namespace iengine {
         std::map<std::string, std::function<void(const UniformValue&)>> uniformSetters_;
         
         void initUniformSetters();
+        void setUniformByType(unsigned int type, int location, const UniformValue& value);
     };
 }

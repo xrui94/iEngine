@@ -3,6 +3,7 @@
 #include "iengine/renderers/opengl/OpenGLRenderer.h"
 #include "iengine/shaders/ShaderLib.h"
 #include "iengine/materials/MaterialManager.h"
+#include "iengine/views/cameras/PerspectiveCamera.h" // 新增：为 resize 方法中的相机类型转换
 
 #ifdef IENGINE_WEBGPU_SUPPORT
 #include "iengine/renderers/webgpu/WebGPURenderer.h"
@@ -10,6 +11,7 @@
 
 #include <iostream>
 #include <memory>
+#include <chrono>
 
 namespace iengine {
 
@@ -152,15 +154,38 @@ namespace iengine {
     void Engine::tick() {
         // 计算时间差
         // 这里应该使用实际的时间函数
-        float currentTime = 0.0f; // 应该从系统获取当前时间
-        float deltaTime = currentTime - lastTime_;
-        lastTime_ = currentTime;
+        static auto startTime = std::chrono::steady_clock::now();
+        auto currentTime = std::chrono::steady_clock::now();
+        float currentTimeSeconds = std::chrono::duration<float>(currentTime - startTime).count();
+        float deltaTime = currentTimeSeconds - lastTime_;
+        lastTime_ = currentTimeSeconds;
 
         // 更新逻辑
         update(deltaTime);
 
         // 渲染
         render();
+    }
+    
+    void Engine::resize(int width, int height) {
+        // 参考 Web 版本的 resize 事件处理
+        if (activeRenderer_) {
+            activeRenderer_->resize(width, height);
+            std::cout << "Engine: Resized to " << width << "x" << height << std::endl;
+        }
+        
+        // 更新活动场景中相机的宽高比（如果是透视相机）
+        if (activeScene_) {
+            auto camera = activeScene_->getActiveCamera();
+            if (camera) {
+                // 尝试转换为透视相机并更新宽高比
+                auto perspectiveCamera = std::dynamic_pointer_cast<PerspectiveCamera>(camera);
+                if (perspectiveCamera && width > 0 && height > 0) {
+                    perspectiveCamera->setAspect(static_cast<float>(width) / static_cast<float>(height));
+                    std::cout << "Engine: Updated camera aspect ratio to " << (static_cast<float>(width) / static_cast<float>(height)) << std::endl;
+                }
+            }
+        }
     }
 
 } // namespace iengine

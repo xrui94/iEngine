@@ -30,13 +30,18 @@ namespace iengine {
         void setRenderer(RendererType renderer);
         
         // 公共渲染方法，供外部调用
-        void render();
+        void tick();
+        //void render();
+        
+        // 新增：resize 事件处理（对齐 Web 版本）
+        void resize(int width, int height);
         
     private:
         void initRenderer();
         void setRenderer(RendererType renderer, bool init);
         void update(float deltaTime);
-        void tick();
+        void render();
+        //void tick();
         
     private:
         std::unique_ptr<Renderer> activeRenderer_;

@@ -24,6 +24,9 @@ namespace iengine {
         void setRotation(float x, float y, float z);
         void setScale(float x, float y, float z);
         
+        // 获取变换矩阵
+        const Matrix4& getTransform() const { return transform_; }
+        
         // 动画支持
         using AnimationCallback = std::function<void(Model&, float)>;
         void addAnimation(const AnimationCallback& callback);

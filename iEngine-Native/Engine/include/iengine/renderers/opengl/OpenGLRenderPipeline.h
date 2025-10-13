@@ -10,6 +10,9 @@
 #include "OpenGLUniforms.h"
 
 namespace iengine {
+    // 前向声明
+    class Mesh;
+    class OpenGLContext;
 
     class OpenGLRenderPipeline {
     public:
@@ -24,6 +27,9 @@ namespace iengine {
 
         void setShaderProgram(const std::shared_ptr<OpenGLShaderProgram>& shaderProgram);
         std::shared_ptr<OpenGLShaderProgram> getShaderProgram() const;
+        
+        // 设置 VAO 和顶点属性
+        void setupVAO(std::shared_ptr<Mesh> mesh, std::shared_ptr<OpenGLShaderProgram> shader, std::shared_ptr<OpenGLContext> context);
 
         void setUniform(const std::string& name, const UniformValue& value);
         void setUniforms(const std::unordered_map<std::string, UniformValue>& uniforms);
@@ -34,6 +40,10 @@ namespace iengine {
         std::shared_ptr<OpenGLShaderProgram> shaderProgram_;
         std::unordered_map<std::string, UniformValue> uniforms_;
         bool isBound_;
+        
+        // VAO 支持
+        unsigned int vao_ = 0;
+        std::shared_ptr<OpenGLContext> context_;
     };
 
 } // namespace iengine

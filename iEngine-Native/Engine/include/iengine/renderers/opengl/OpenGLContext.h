@@ -66,6 +66,16 @@ namespace iengine {
         void setUniform4f(int location, float x, float y, float z, float w);
         void setUniformMatrix4fv(int location, const float* value);
         
+        // 新增：动态uniform查询（参考Web版本）
+        int getUniformCount(unsigned int program);
+        struct UniformInfo {
+            std::string name;
+            unsigned int type;
+            int size;
+        };
+        UniformInfo getActiveUniform(unsigned int program, int index);
+        void setUniform(unsigned int type, int location, const void* value);
+        
         // 顶点属性操作
         int getAttribLocation(unsigned int program, const std::string& name);
         void enableVertexAttribArray(unsigned int location);

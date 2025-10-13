@@ -51,6 +51,18 @@ namespace sandbox {
         std::cout << "GLFW窗口创建成功" << std::endl;
         std::cout << "OpenGL版本: " << glGetString(GL_VERSION) << std::endl;
 
+        // 注册滚轮回调
+        glfwSetScrollCallback(window_, [](GLFWwindow* w, double xoffset, double yoffset) {
+            auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(w));
+            if (self && self->eventCallback_) {
+                iengine::WindowEvent event;
+                event.type = iengine::WindowEventType::MouseScroll;
+                event.data.mouseScroll.xoffset = xoffset;
+                event.data.mouseScroll.yoffset = yoffset;
+                self->eventCallback_(event);
+            }
+        });
+        
         return true;
     }
 
@@ -96,7 +108,14 @@ namespace sandbox {
     void GLFWWindow::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
         if (self && self->eventCallback_) {
-            // 可以通过eventCallback_通知Engine窗口大小改变
+            // 通过eventCallback_通知Engine窗口大小改变，对齐 Web 版本的 resize 事件
+            iengine::WindowEvent event;
+            event.type = iengine::WindowEventType::Resize;
+            event.data.resize.width = width;
+            event.data.resize.height = height;
+            self->eventCallback_(event);
+            std::cout << "窗口大小调整为: " << width << "x" << height << ", 已通知 Engine" << std::endl;
+        } else {
             std::cout << "窗口大小调整为: " << width << "x" << height << std::endl;
         }
         glViewport(0, 0, width, height);
@@ -108,21 +127,67 @@ namespace sandbox {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
         if (self && self->eventCallback_) {
-            // 可以通过eventCallback_通知Engine键盘事件
+            // 发送键盘事件到引擎
+            iengine::WindowEvent event;
+            event.type = iengine::WindowEventType::Key;
+            event.data.key.key = key;
+            
+            // 映射GLFW动作到引擎枚举
+            if (action == GLFW_PRESS) {
+                event.data.key.action = iengine::KeyAction::Press;
+            } else if (action == GLFW_RELEASE) {
+                event.data.key.action = iengine::KeyAction::Release;
+            } else if (action == GLFW_REPEAT) {
+                event.data.key.action = iengine::KeyAction::Repeat;
+            }
+            
+            event.data.key.mods = mods;
+            self->eventCallback_(event);
         }
     }
 
     void GLFWWindow::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
         if (self && self->eventCallback_) {
-            // 可以通过eventCallback_通知Engine鼠标按钮事件
+            // 发送鼠标按键事件
+            iengine::WindowEvent event;
+            event.type = iengine::WindowEventType::MouseButton;
+                
+            // 映射GLFW鼠标按键到引擎枚举
+            if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                event.data.mouseButton.button = iengine::MouseButton::Left;
+            } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+                event.data.mouseButton.button = iengine::MouseButton::Right;
+            } else if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+                event.data.mouseButton.button = iengine::MouseButton::Middle;
+            }
+                
+            // 映射动作
+            if (action == GLFW_PRESS) {
+                event.data.mouseButton.action = iengine::KeyAction::Press;
+            } else if (action == GLFW_RELEASE) {
+                event.data.mouseButton.action = iengine::KeyAction::Release;
+            }
+                
+            // 获取鼠标位置
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            event.data.mouseButton.x = x;
+            event.data.mouseButton.y = y;
+                
+            self->eventCallback_(event);
         }
     }
 
     void GLFWWindow::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
         auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window));
         if (self && self->eventCallback_) {
-            // 可以通过eventCallback_通知Engine鼠标移动事件
+            // 发送鼠标移动事件
+            iengine::WindowEvent event;
+            event.type = iengine::WindowEventType::MouseMove;
+            event.data.mouseMove.x = xpos;
+            event.data.mouseMove.y = ypos;
+            self->eventCallback_(event);
         }
     }
 

@@ -10,4 +10,4 @@ cmake --build . --config Debug
 
 echo.
 echo Build complete!
-pause
+@REM pause

@@ -2,7 +2,7 @@
 #include "iengine/renderers/Context.h"
 #include "iengine/renderers/opengl/OpenGLUniforms.h"
 #include "iengine/views/cameras/Camera.h"
-#include "iengine/core/Mesh.h"
+#include "iengine/core/Model.h"  // 改为包含 Model 而不是 Mesh
 #include "iengine/math/Matrix4.h"
 #include "iengine/math/Matrix3.h"
 
@@ -27,13 +27,13 @@ namespace iengine {
     std::map<std::string, UniformValue> BaseMaterial::getUniforms(
         std::shared_ptr<Context> context,
         std::shared_ptr<Camera> camera,
-        std::shared_ptr<Mesh> mesh,
+        std::shared_ptr<Model> model,  // 改为传递 Model
         const std::vector<std::shared_ptr<Light>>& lights) {
         
         std::map<std::string, UniformValue> uniforms;
         
-        // 计算模型-视图矩阵：uModelViewMatrix = viewMatrix * modelMatrix
-        Matrix4 modelMatrix(mesh->transform);
+        // 从 Model 获取变换矩阵（与 Web 版本一致）
+        Matrix4 modelMatrix = model->getTransform(); // 需要在 Model 类中添加这个方法
         Matrix4 viewMatrix = camera->getViewMatrix();
         Matrix4 modelViewMatrix = viewMatrix;
         modelViewMatrix.multiply(modelMatrix);
@@ -46,6 +46,8 @@ namespace iengine {
         uniforms["uProjectionMatrix"] = UniformValue::fromMatrix4(projectionMatrix);
         uniforms["uBaseColor"] = UniformValue::fromVec3(color.r, color.g, color.b);
         
+        // 输出调试信息
+        std::cout << "BaseMaterial::getUniforms() - 颜色: (" << color.r << ", " << color.g << ", " << color.b << ")" << std::endl;
         std::cout << "BaseMaterial::getUniforms() - Computed uniforms: "
                   << "uModelViewMatrix, uProjectionMatrix, uBaseColor" << std::endl;
         

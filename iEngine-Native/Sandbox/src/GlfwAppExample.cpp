@@ -55,6 +55,10 @@ namespace sandbox {
             // 启用垂直同步
             glfwSwapInterval(1);
             
+            // 确保窗口显示在前台
+            glfwShowWindow(window_->getGLFWHandle());
+            glfwFocusWindow(window_->getGLFWHandle());
+            
             // 注册GLFW窗口创建器到Engine的WindowFactory
             iengine::WindowFactory::registerWindowCreator(
                 iengine::WindowType::GLFW,
@@ -90,7 +94,13 @@ namespace sandbox {
             engine_->start();
             
             std::cout << "GLFW + iEngine应用程序初始化成功" << std::endl;
-            std::cout << "提示: 按ESC键退出程序" << std::endl;
+            std::cout << "\n=== 控制器说明 ===" << std::endl;
+            std::cout << "当前模式：轨道控制器" << std::endl;
+            std::cout << "操作说明：" << std::endl;
+            std::cout << "- 鼠标拖拽：旋转视角" << std::endl;
+            std::cout << "- 滚轮：缩放" << std::endl;
+            std::cout << "- P键：切换到第一人称控制器" << std::endl;
+            std::cout << "- ESC键：退出程序" << std::endl;
             return true;
         }
         
@@ -133,6 +143,9 @@ namespace sandbox {
         std::shared_ptr<iengine::Engine> engine_;
         std::shared_ptr<iengine::Scene> scene_;
         std::shared_ptr<iengine::PerspectiveCamera> camera_;
+        std::shared_ptr<iengine::OrbitControls> orbitControls_;        // 轨道控制器
+        std::shared_ptr<iengine::FirstPersonControls> firstPersonControls_; // 第一人称控制器
+        bool isFirstPersonMode_ = false; // 当前控制器模式（false=轨道，true=第一人称）
         
         bool setupScene() {
             if (!engine_) {
@@ -151,27 +164,68 @@ namespace sandbox {
                 camera_->lookAt(0.0f, 0.0f, 0.0f);
                 scene_->setActiveCamera(camera_);
                 
-                // 创建几何体 - 立方体
+                // 创建轨道控制器和第一人称控制器（使用引擎的抽象接口）
+                orbitControls_ = std::make_shared<iengine::OrbitControls>(camera_, window_);
+                firstPersonControls_ = std::make_shared<iengine::FirstPersonControls>(camera_, window_);
+                
+                std::cout << "控制器初始化成功：" << std::endl;
+                std::cout << "- 轨道控制器（当前激活）：支持鼠标旋转和滚轮缩放" << std::endl;
+                std::cout << "- 第一人称控制器：支持WASD移动和鼠标视角" << std::endl;
+                std::cout << "- 按P键切换控制器模式" << std::endl;
+                
+                // 设置控制器切换事件监听
+                window_->setEventCallback([this](const iengine::WindowEvent& event) {
+                    this->handleGlobalEvent(event);
+                });
+                
+                // 1. 创建红色三角形
+                auto triangleGeometry = std::make_shared<iengine::Triangle>();
+                auto trianglePrimitive = std::make_shared<iengine::Primitive>(iengine::PrimitiveType::TRIANGLES);
+                auto triangleMesh = std::make_shared<iengine::Mesh>(triangleGeometry, trianglePrimitive);
+                
+                iengine::BaseMaterialParams triangleParams;
+                triangleParams.name = "TriangleMaterial";
+                triangleParams.shaderName = "base_material";
+                triangleParams.color = iengine::Color(1.0f, 0.0f, 0.0f, 1.0f); // 红色
+                auto triangleMaterial = std::make_shared<iengine::BaseMaterial>(triangleParams);
+                
+                auto triangleModel = std::make_shared<iengine::Model>("Triangle", triangleMesh, triangleMaterial);
+                // 将三角形向左移动一点
+                triangleModel->setPosition(-1.5f, 0.0f, 0.0f);
+                
+                // 2. 创建蓝色立方体
                 auto cubeGeometry = std::make_shared<iengine::Cube>(1.0f);
-                
-                // 创建图元
                 auto cubePrimitive = std::make_shared<iengine::Primitive>(iengine::PrimitiveType::TRIANGLES);
-                
-                // 创建网格
                 auto cubeMesh = std::make_shared<iengine::Mesh>(cubeGeometry, cubePrimitive);
                 
-                // 创建材质
-                iengine::BaseMaterialParams params;
-                params.name = "GlfwCubeMaterial";
-                params.shaderName = "base_material";  // 使用正确的着色器名称
-                params.color = iengine::Color(1.0f, 0.5f, 0.2f, 1.0f); // 橙色立方体
-                auto material = std::make_shared<iengine::BaseMaterial>(params);
+                iengine::BaseMaterialParams cubeParams;
+                cubeParams.name = "CubeMaterial";
+                cubeParams.shaderName = "base_material";
+                cubeParams.color = iengine::Color(0.0f, 0.5f, 1.0f, 1.0f); // 蓝色
+                auto cubeMaterial = std::make_shared<iengine::BaseMaterial>(cubeParams);
                 
-                // 创建模型
-                auto cubeModel = std::make_shared<iengine::Model>("GlfwCube", cubeMesh, material);
+                auto cubeModel = std::make_shared<iengine::Model>("Cube", cubeMesh, cubeMaterial);
+                // 将立方体向右移动一点
+                cubeModel->setPosition(1.5f, 0.0f, 0.0f);
                 
-                // 将模型添加到场景
+                // 3. 创建黄色线框立方体 (如果支持线框模式)
+                auto wireframeGeometry = std::make_shared<iengine::Cube>(1.0f);
+                auto wireframePrimitive = std::make_shared<iengine::Primitive>(iengine::PrimitiveType::LINES);
+                auto wireframeMesh = std::make_shared<iengine::Mesh>(wireframeGeometry, wireframePrimitive);
+                
+                iengine::BaseMaterialParams wireframeParams;
+                wireframeParams.name = "WireframeMaterial";
+                wireframeParams.shaderName = "base_material";
+                wireframeParams.color = iengine::Color(1.0f, 1.0f, 0.0f, 1.0f); // 黄色
+                auto wireframeMaterial = std::make_shared<iengine::BaseMaterial>(wireframeParams);
+                
+                auto wireframeModel = std::make_shared<iengine::Model>("CubeWireframe", wireframeMesh, wireframeMaterial);
+                wireframeModel->setPosition(0.0f, 2.0f, 0.0f); // 向上移动
+                
+                // 将所有模型添加到场景
+                scene_->addComponent(triangleModel);
                 scene_->addComponent(cubeModel);
+                scene_->addComponent(wireframeModel);
                 
                 // 将场景添加到引擎
                 engine_->addScene("main", scene_);
@@ -199,7 +253,8 @@ namespace sandbox {
             if (engine_ && scene_) {
                 try {
                     // 调用引擎渲染
-                    engine_->render();
+                    //engine_->render();
+                    engine_->tick();
                 } catch (const std::exception& e) {
                     std::cerr << "Engine render error: " << e.what() << std::endl;
                     // 如果引擎渲染失败，使用备用渲染
@@ -217,6 +272,14 @@ namespace sandbox {
         }
         
         void cleanup() {
+            if (orbitControls_) {
+                orbitControls_->dispose();
+                orbitControls_.reset();
+            }
+            if (firstPersonControls_) {
+                firstPersonControls_->dispose();
+                firstPersonControls_.reset();
+            }
             if (scene_) {
                 scene_.reset();
             }
@@ -227,6 +290,45 @@ namespace sandbox {
                 window_.reset();
             }
             glfwTerminate();
+        }
+        
+        // 全局事件处理：处理控制器切换和其他全局事件
+        void handleGlobalEvent(const iengine::WindowEvent& event) {
+            // 处理P键切换控制器模式
+            if (event.type == iengine::WindowEventType::Key) {
+                //const int GLFW_KEY_P = 80;
+                if (event.data.key.key == GLFW_KEY_P && event.data.key.action == iengine::KeyAction::Press) {
+                    switchControllerMode();
+                    return; // 切换事件不传递给当前控制器
+                }
+            }
+            
+            // 将事件传递给当前激活的控制器
+            if (isFirstPersonMode_ && firstPersonControls_) {
+                firstPersonControls_->handleWindowEvent(event);
+            } else if (!isFirstPersonMode_ && orbitControls_) {
+                orbitControls_->handleWindowEvent(event);
+            }
+        }
+        
+        // 切换控制器模式
+        void switchControllerMode() {
+            isFirstPersonMode_ = !isFirstPersonMode_;
+            
+            if (isFirstPersonMode_) {
+                std::cout << "\\n=== 切换到第一人称控制器 ===" << std::endl;
+                std::cout << "操作说明：" << std::endl;
+                std::cout << "- 鼠标拖拽：控制视角" << std::endl;
+                std::cout << "- WASD：移动" << std::endl;
+                std::cout << "- 滚轮：前后移动" << std::endl;
+                std::cout << "- P键：切换回轨道控制器" << std::endl;
+            } else {
+                std::cout << "\\n=== 切换到轨道控制器 ===" << std::endl;
+                std::cout << "操作说明：" << std::endl;
+                std::cout << "- 鼠标拖拽：旋转视角" << std::endl;
+                std::cout << "- 滚轮：缩放" << std::endl;
+                std::cout << "- P键：切换到第一人称控制器" << std::endl;
+            }
         }
     };
     

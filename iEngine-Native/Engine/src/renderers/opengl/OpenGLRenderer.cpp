@@ -96,7 +96,7 @@ namespace iengine {
             
             // 5. 设置uniform，将相机、材质、光照等参数数据绑定到Shader的uniform
             // 让材质/Shader自己决定需要哪些uniform
-            auto uniforms = component->material->getUniforms(context_, currentCamera_, component->mesh, lights);
+            auto uniforms = component->material->getUniforms(context_, currentCamera_, component, lights);  // 传递 component（Model）而不是 mesh
             auto textures = component->material->getTextures();
             
             // 设置uniforms
@@ -194,8 +194,12 @@ namespace iengine {
         
         // 创建新的渲染管线
         auto pipeline = std::make_shared<OpenGLRenderPipeline>();
-        pipeline->setShaderProgram(shader);
-        // TODO: 设置mesh相关的VAO等
+        
+        // 设置 VAO 和顶点属性
+        auto openglContext = std::dynamic_pointer_cast<OpenGLContext>(context_);
+        if (openglContext) {
+            pipeline->setupVAO(mesh, shader, openglContext);
+        }
         
         renderPipelineCache_[key] = pipeline;
         return pipeline;

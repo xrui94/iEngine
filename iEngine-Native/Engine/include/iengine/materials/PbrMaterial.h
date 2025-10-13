@@ -83,7 +83,7 @@ namespace iengine {
         std::map<std::string, UniformValue> getUniforms(
             std::shared_ptr<Context> context,
             std::shared_ptr<Camera> camera,
-            std::shared_ptr<Mesh> mesh,
+            std::shared_ptr<Model> model,
             const std::vector<std::shared_ptr<Light>>& lights) override;
         TextureInfo getTextures() override;
         

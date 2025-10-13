@@ -147,7 +147,8 @@ namespace sandbox {
         // 使用Engine渲染场景
         if (engine_ && scene_ && initialized_) {
             try {
-                engine_->render();
+                //engine_->render();
+                engine_->tick();
             } catch (const std::exception& e) {
                 std::cerr << "Qt窗口Engine渲染失败: " << e.what() << std::endl;
                 // 备用渲染：简单清屏

@@ -8,17 +8,39 @@ namespace iengine {
     // 前向声明
     class Context;
     
-    // 窗口事件类型（最基本的）
+    // 窗口事件类型（扩展支持鼠标键盘交互）
     enum class WindowEventType {
         Resize,
-        Close
+        Close,
+        MouseButton,
+        MouseMove,
+        MouseScroll,
+        Key
     };
     
-    // 窗口事件结构（简化版）
+    // 鼠标按键枚举
+    enum class MouseButton {
+        Left = 0,
+        Right = 1,
+        Middle = 2
+    };
+    
+    // 按键动作枚举
+    enum class KeyAction {
+        Release = 0,
+        Press = 1,
+        Repeat = 2
+    };
+    
+    // 窗口事件结构（扩展版）
     struct WindowEvent {
         WindowEventType type;
         union {
             struct { int width, height; } resize;
+            struct { MouseButton button; KeyAction action; double x, y; } mouseButton;
+            struct { double x, y; } mouseMove;
+            struct { double xoffset, yoffset; } mouseScroll;
+            struct { int key; KeyAction action; int mods; } key;
         } data;
     };
     

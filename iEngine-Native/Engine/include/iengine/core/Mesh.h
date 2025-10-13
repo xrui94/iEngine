@@ -43,6 +43,10 @@ namespace iengine {
         // 构建交错缓冲区
         std::vector<float> buildInterleavedBuffer(const VertexLayout& layout) const;
         
+        // 访问器方法
+        void* getVBO() const { return vbo; }
+        void* getIBO() const { return ibo; }
+        
     private:
         std::vector<std::pair<std::string, std::vector<float>>> vertexAttributeDataMap;
         

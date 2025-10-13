@@ -361,4 +361,67 @@ namespace iengine {
         }
         return true;
     }
+    
+    // 新增：动态uniform查询方法（参考Web版本）
+    int OpenGLContext::getUniformCount(unsigned int program) {
+        int count = 0;
+        glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+        return count;
+    }
+    
+    OpenGLContext::UniformInfo OpenGLContext::getActiveUniform(unsigned int program, int index) {
+        UniformInfo info;
+        const int bufferSize = 256;
+        char nameBuffer[bufferSize];
+        int length = 0;
+        int size = 0;
+        unsigned int type = 0;
+        
+        glGetActiveUniform(program, index, bufferSize, &length, &size, &type, nameBuffer);
+        
+        info.name = std::string(nameBuffer, length);
+        info.type = type;
+        info.size = size;
+        
+        return info;
+    }
+    
+    void OpenGLContext::setUniform(unsigned int type, int location, const void* value) {
+        if (location < 0) return;
+        
+        switch (type) {
+            case GL_FLOAT:
+                glUniform1f(location, *static_cast<const float*>(value));
+                break;
+            case GL_FLOAT_VEC2: {
+                const float* vec = static_cast<const float*>(value);
+                glUniform2f(location, vec[0], vec[1]);
+                break;
+            }
+            case GL_FLOAT_VEC3: {
+                const float* vec = static_cast<const float*>(value);
+                glUniform3f(location, vec[0], vec[1], vec[2]);
+                break;
+            }
+            case GL_FLOAT_VEC4: {
+                const float* vec = static_cast<const float*>(value);
+                glUniform4f(location, vec[0], vec[1], vec[2], vec[3]);
+                break;
+            }
+            case GL_FLOAT_MAT4:
+                glUniformMatrix4fv(location, 1, GL_FALSE, static_cast<const float*>(value));
+                break;
+            case GL_INT:
+            case GL_BOOL:
+                glUniform1i(location, *static_cast<const int*>(value));
+                break;
+            case GL_SAMPLER_2D:
+            case GL_SAMPLER_CUBE:
+                glUniform1i(location, *static_cast<const int*>(value));
+                break;
+            default:
+                std::cerr << "Unsupported uniform type: " << type << std::endl;
+                break;
+        }
+    }
 }
