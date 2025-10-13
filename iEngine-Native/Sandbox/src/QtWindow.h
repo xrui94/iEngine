@@ -16,9 +16,10 @@ namespace sandbox {
      * 这个类将Qt的QOpenGLWidget封装为Engine可以使用的窗口抽象，
      * 实现了窗口大小查询、关闭状态检查、上下文管理等功能。
      */
-    class QtWindow : public iengine::WindowInterface {
+    class QtWindow : public QOpenGLWidget, public iengine::WindowInterface {
+        Q_OBJECT
     public:
-        QtWindow();
+        QtWindow(QWidget* parent = nullptr);
         ~QtWindow() override;
 
         /**
@@ -26,7 +27,7 @@ namespace sandbox {
          * @param parent 父Widget
          * @return 初始化是否成功
          */
-        bool initialize(QWidget* parent = nullptr);
+        //bool initialize(QWidget* parent = nullptr);
 
         // WindowInterface 接口实现
         void getSize(int& width, int& height) const override;
@@ -36,20 +37,21 @@ namespace sandbox {
         void setEventCallback(const iengine::WindowEventCallback& callback) override;
 
         // Qt特有的方法
-        QOpenGLWidget* getQtWidget() const { return widget_; }
+        //QOpenGLWidget* getQtWidget() const { return widget_; }
         void setEngine(std::shared_ptr<iengine::Engine> engine);
         void setScene(std::shared_ptr<iengine::Scene> scene);
 
         // 渲染相关
         void render();
 
+	protected:
         // 内部初始化方法 - 设为公有以便内部Widget调用
-        void initializeGL();
-        void resizeGL(int w, int h);
-        void paintGL();
+        void initializeGL() override;
+        void resizeGL(int w, int h) override;
+        void paintGL() override;
 
     private:
-        QOpenGLWidget* widget_;
+        //QOpenGLWidget* widget_;
         std::shared_ptr<iengine::Context> context_;
         iengine::WindowEventCallback eventCallback_;
         std::shared_ptr<iengine::Engine> engine_;

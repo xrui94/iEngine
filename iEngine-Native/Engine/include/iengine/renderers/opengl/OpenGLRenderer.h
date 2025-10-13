@@ -11,7 +11,7 @@ namespace iengine {
     class Scene;
     class Mesh;
     class Material;
-    class Context;
+    class OpenGLContext;
     class Light;
     class OpenGLContext;
     class OpenGLShaderProgram;
@@ -34,7 +34,7 @@ namespace iengine {
             std::shared_ptr<OpenGLShaderProgram> shader);
         
     private:
-        std::shared_ptr<Context> context_;
+        std::shared_ptr<OpenGLContext> m_openGLContext;
         std::shared_ptr<Camera> currentCamera_;
         
         // 着色器缓存

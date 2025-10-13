@@ -37,7 +37,9 @@ namespace iengine {
     
     // OpenGLUniforms 实现
     OpenGLUniforms::OpenGLUniforms(std::shared_ptr<OpenGLContext> context, void* program)
-        : context_(context), program_(program) {
+        : context_(context), program_(program)
+    {
+        // 重要：初始化uniform设置器，这一步不能省略！
         initUniformSetters();
     }
     
@@ -65,6 +67,7 @@ namespace iengine {
         
         std::cout << "OpenGLUniforms: Found " << uniformCount << " uniforms in program " << programId << std::endl;
         
+		// 遍历所有active uniforms，创建对应的setter函数
         for (int i = 0; i < uniformCount; ++i) {
             auto info = context_->getActiveUniform(programId, i);
             if (info.name.empty()) continue;
@@ -81,7 +84,7 @@ namespace iengine {
             
             // 为每个uniform创建setter，严格对应Web版本的 setter = (v: any) => this.context.setUniform(info.type, loc, v)
             uniformSetters_[uniformName] = [this, info, location](const UniformValue& value) {
-                setUniformByType(info.type, location, value);
+                setUniformByType(info.type, location, value);  // 内部根据uniform类型是否是 texture，而自行递增纹理单元
             };
             
             std::cout << "  - Registered uniform: " << uniformName 
@@ -134,18 +137,24 @@ namespace iengine {
                         texture->upload(context_);
                     }
                     
-                    // 2. 获取纹理单元（由Texture对象维护）
-                    int textureUnit = texture->getUnit();
+                    //// 2. 获取纹理单元（由Texture对象维护）
+                    //int textureUnit = texture->getUnit();
+                    texture->setUnit(textureUnit_); // 记录纹理单元
                     
                     // 3. 激活纹理单元并绑定纹理
-                    context_->activeTexture(textureUnit);
+                    //context_->activeTexture(textureUnit);
+					context_->activeTexture(textureUnit_);
                     context_->bindTexture(texture->getGpuTexture());
                     
                     // 4. 设置uniform采样器的值为纹理单元索引
-                    context_->setUniform1i(location, textureUnit);
+                    //context_->setUniform1i(location, textureUnit);
+                    context_->setUniform1i(location, textureUnit_);
                     
                     std::cout << "OpenGLUniforms: Bound texture '" << texture->getName() 
-                              << "' to unit " << textureUnit << " for uniform location " << location << std::endl;
+                              << "' to unit " << textureUnit_ << " for uniform location " << location << std::endl;
+
+                    // 纹理单元增加1
+                    textureUnit_++;
                 }
                 break;
             }

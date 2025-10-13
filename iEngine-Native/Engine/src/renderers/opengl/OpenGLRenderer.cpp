@@ -22,11 +22,12 @@ namespace iengine {
     
     bool OpenGLRenderer::initialize(std::shared_ptr<Context> context) {
         // 初始化OpenGL渲染器
-        context_ = context;
-        if (!context_) {
+        m_openGLContext = std::dynamic_pointer_cast<OpenGLContext>(context);
+        if (!m_openGLContext) {
             std::cerr << "OpenGLRenderer: Context not set" << std::endl;
             return false;
         }
+        m_openGLContext->init();
         std::cout << "OpenGLRenderer initialized with context" << std::endl;
         return true;
     }
@@ -66,7 +67,7 @@ namespace iengine {
             
             // 1. 确保mesh顶点、索引等Buffer资源已经传到GPU
             if (!component->mesh->uploaded) {
-                component->mesh->upload(context_);
+                component->mesh->upload(m_openGLContext);
             }
             
             // 2. 根据材质特性，创建Shader
@@ -102,7 +103,7 @@ namespace iengine {
             
             // 5. 设置uniform，将相机、材质、光照等参数数据绑定到Shader的uniform
             // 让材质/Shader自己决定需要哪些uniform
-            auto uniforms = component->material->getUniforms(context_, currentCamera_, component, lights);  // 传递 component（Model）而不是 mesh
+            auto uniforms = component->material->getUniforms(m_openGLContext, currentCamera_, component, lights);  // 传递 component（Model）而不是 mesh
             auto textures = component->material->getTextures();
             
             // 设置uniforms
@@ -119,10 +120,7 @@ namespace iengine {
             }
             
             // 6. 绘制(DrawCall)
-            auto openglContext = std::dynamic_pointer_cast<OpenGLContext>(context_);
-            if (openglContext) {
-                openglContext->draw(component->mesh);
-            }
+            m_openGLContext->draw(component->mesh);
             
             // 7. 解绑渲染管线（可选）
             pipeline->unbind();
@@ -130,8 +128,8 @@ namespace iengine {
     }
     
     void OpenGLRenderer::resize(int width, int height) {
-        if (context_) {
-            context_->resize(width, height);
+        if (m_openGLContext) {
+            m_openGLContext->resize(width, height);
         }
         
         // 更新相机宽高比（如果是透视相机）
@@ -144,8 +142,8 @@ namespace iengine {
     }
     
     void OpenGLRenderer::clear() {
-        if (context_) {
-            context_->clear();
+        if (m_openGLContext) {
+            m_openGLContext->clear();
         }
     }
     
@@ -176,13 +174,10 @@ namespace iengine {
         if (variants && variants->webgl && 
             !variants->webgl->vertCode.empty() && 
             !variants->webgl->fragCode.empty()) {
-            auto openglContext = std::dynamic_pointer_cast<OpenGLContext>(context_);
-            if (openglContext) {
-                auto shader = std::make_shared<OpenGLShaderProgram>(
-                    openglContext, variants->webgl->vertCode, variants->webgl->fragCode);
-                shaders_[key] = shader;
-                return shader;
-            }
+            auto shader = std::make_shared<OpenGLShaderProgram>(
+                m_openGLContext, variants->webgl->vertCode, variants->webgl->fragCode);
+            shaders_[key] = shader;
+            return shader;
         }
         
         std::cerr << "Shader variant not found for: " << shaderName << std::endl;
@@ -206,10 +201,7 @@ namespace iengine {
         auto pipeline = std::make_shared<OpenGLRenderPipeline>();
         
         // 设置 VAO 和顶点属性
-        auto openglContext = std::dynamic_pointer_cast<OpenGLContext>(context_);
-        if (openglContext) {
-            pipeline->setupVAO(mesh, shader, openglContext);
-        }
+        pipeline->setupVAO(mesh, shader, m_openGLContext);
         
         renderPipelineCache_[key] = pipeline;
         return pipeline;

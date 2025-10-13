@@ -16,10 +16,11 @@ namespace iengine {
         
         // 创建OpenGL Context
         openglContext_ = std::make_shared<OpenGLContext>(window_);
-        openglContext_->init();
+        //openglContext_->init();
+        // 创建 WebGPU Context
         
         // 默认使用OpenGL Context
-        activeContext_ = openglContext_;
+        //activeContext_ = openglContext_;
         
         std::cout << "Scene created with OpenGL context" << std::endl;
     }

@@ -12,8 +12,6 @@ namespace iengine {
         program = createProgram();
         if (program) {
             uniforms = std::make_shared<OpenGLUniforms>(context, program);
-            // 重要：初始化uniform设置器，这一步不能省略！
-            uniforms->initUniformSetters();
         }
     }
     

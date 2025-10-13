@@ -8,6 +8,8 @@ namespace iengine {
     class Engine;
     class Scene;
     class PerspectiveCamera;
+	class OrbitControls;
+	class FirstPersonControls;
 }
 
 namespace sandbox {
@@ -25,10 +27,12 @@ namespace sandbox {
         void setupScene();
         void createMenus();
 
-        std::unique_ptr<QtWindow> qtWindow_;
+        std::shared_ptr<QtWindow> qtWindow_;
         std::shared_ptr<iengine::Engine> engine_;
         std::shared_ptr<iengine::Scene> scene_;
         std::shared_ptr<iengine::PerspectiveCamera> camera_;
+        std::shared_ptr<iengine::OrbitControls> orbitControls_;        // 轨道控制器
+        std::shared_ptr<iengine::FirstPersonControls> firstPersonControls_; // 第一人称控制器
     };
 
 } // namespace sandbox
