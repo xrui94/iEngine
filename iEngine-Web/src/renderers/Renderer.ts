@@ -17,6 +17,8 @@ export abstract class Renderer {
         return value === 'webgl1' || value === 'webgl2' || value === 'webgpu';
     }
 
+    abstract isInitialized(): boolean;
+
     abstract render(scene: Scene): void;
 
     // abstract setCamera(camera: Camera): void;

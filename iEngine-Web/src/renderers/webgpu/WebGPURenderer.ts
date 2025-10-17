@@ -72,6 +72,7 @@ export class WebGPURenderer extends Renderer {
     private context!: WebGPUContext;
     private graphicsApi: GraphicsAPI = 'webgpu';
     private shaders: Map<string, WebGPUShaderModule> = new Map();
+    private _isInitialized: boolean = false;
     private currentCamera: Camera | null = null;
 
     // private defaultTexture!: Texture;
@@ -106,6 +107,11 @@ export class WebGPURenderer extends Renderer {
 
         // 创建默认纹理和采样器
         // this.createDefaultTextureAndSampler(this.gpuContext);
+        this._isInitialized = true;
+    }
+
+    isInitialized(): boolean {
+        return this._isInitialized;
     }
 
     // private initShaders(): void {

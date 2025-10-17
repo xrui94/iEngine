@@ -20,7 +20,7 @@ export class WebGLRenderer extends Renderer {
     private context!: WebGLContext;
     private graphicsApi!: GraphicsAPI;
     private shaders: Map<string, WebGLShaderProgram> = new Map();
-
+    private _isInitialized: boolean = false;
     private renderPipelineCache: Map<string, WebGLRenderPipeline> = new Map();
     
     // // 相机参数
@@ -64,6 +64,12 @@ export class WebGLRenderer extends Renderer {
         this.context.init();
         // this.initShaders();
         this.resize();
+
+        this._isInitialized = true;
+    }
+
+    isInitialized(): boolean {
+        return this._isInitialized;
     }
 
     // 提供gl上下文的访问器

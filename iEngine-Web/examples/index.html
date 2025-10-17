@@ -293,12 +293,15 @@
         }
 
 
-        // 初始化引擎
+        // 1. 初始化引擎
         const engine = new iEngine.Engine({
             renderer: 'webgpu',
         });
 
-        // 创建场景
+        // 2. 启动引擎（可以在 Engine 实例化后，立即通过 start 方法启动引擎）
+        engine.start();
+
+        // 3. 创建场景
         const canvas = document.getElementById('glCanvas');
         const scene = new iEngine.Scene(canvas, {
             useWebGL1: true, // 默认使用 WebGL2 渲染器
@@ -308,16 +311,17 @@
             }
         });
 
-        // 创建相机
+        // 4. 创建相机
         const camera = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
         camera.setPosition(0, 0, 5);
         camera.lookAt(0, 0, 0);
         // 设置场景的相机
         scene.activeCamera = camera;
 
-        // 创建相机的控制器
+        // 5. 创建相机的控制器
         let controls = new iEngine.OrbitControls(camera, canvas);
 
+        // 6. 添加模型、光源到场景中
         // 添加光源
         scene.addLight(new iEngine.AmbientLight({
             color: new iEngine.Color(0.3, 0.3, 0.3)
@@ -328,13 +332,6 @@
         })); // 添加平行光照
 
         // 添加模型
-        // const triangle = scene.createTriangle();
-        // const cube = scene.createCube();
-        // const wireCube = scene.createWireframeCube();
-        // scene.addComponent(triangle);
-        // scene.addComponent(cube);
-        // scene.addComponent(wireCube);
-        //
         scene.addComponent(createTriangle());
         scene.addComponent(createCube());
         scene.addComponent(createWireframeCube());
@@ -342,8 +339,41 @@
         // 将场景添加到引擎
         engine.addScene('default-simple-scene', scene);
 
-        // 启动引擎
-        await engine.start();
+        // 启动引擎（可以在 Scene 添加到场景后，再通过 start 方法启动引擎）
+        // engine.start();
+
+        // 8. 控制渲染循环（方式1）
+        engine.setAnimationLoop(() => {
+            // 可以添加任意逻辑
+
+            // 引擎标准的帧渲染更新
+            engine.tick();
+        });
+
+        // // 8. 控制渲染循环（方式2）
+        // function animate() {
+        //     requestAnimationFrame(animate);
+            
+        //     // // 完全自定义逻辑
+        //     // if (gameState === 'playing') {
+        //     //     updateGame();
+        //     // } else if (gameState === 'paused') {
+        //     //     updateUI();
+        //     // }
+            
+        //     engine.tick();
+        // }
+        // animate();
+
+        // 启动引擎（不能在调用了 tick 方法后，才 start 引擎，这将导致引擎抛出异常！！！）
+        // engine.start();
+
+        // // 9. 停止
+        // setTimeout(() => {
+        //     alert('已经过 5s，引擎已停止');
+        //     engine.stop();
+        // }, 5000);
+
 
 
         // ---------- 以下为业务代码 ----------
