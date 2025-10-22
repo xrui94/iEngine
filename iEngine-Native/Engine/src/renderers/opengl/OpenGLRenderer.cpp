@@ -29,6 +29,9 @@ namespace iengine {
         }
         m_openGLContext->init();
         std::cout << "OpenGLRenderer initialized with context" << std::endl;
+
+        m_isInitialized = true;
+
         return true;
     }
     
@@ -145,6 +148,10 @@ namespace iengine {
         if (m_openGLContext) {
             m_openGLContext->clear();
         }
+    }
+
+    bool OpenGLRenderer::isInitialized() const noexcept {
+		return m_isInitialized;
     }
     
     std::shared_ptr<OpenGLShaderProgram> OpenGLRenderer::getOrCreateShader(

@@ -27,6 +27,7 @@ namespace iengine {
         void render(std::shared_ptr<Scene> scene) override;
         void resize(int width, int height) override;
         void clear() override;
+		bool isInitialized() const noexcept override;
         
         // 获取或创建渲染管线
         std::shared_ptr<OpenGLRenderPipeline> getOrCreatePipeline(
@@ -36,6 +37,7 @@ namespace iengine {
     private:
         std::shared_ptr<OpenGLContext> m_openGLContext;
         std::shared_ptr<Camera> currentCamera_;
+		bool m_isInitialized = false;
         
         // 着色器缓存
         std::map<std::string, std::shared_ptr<OpenGLShaderProgram>> shaders_;

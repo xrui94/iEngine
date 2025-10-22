@@ -46,7 +46,6 @@ namespace sandbox {
         : QMainWindow(parent)
         , qtWindow_(nullptr)
         , qtWindowWrapper_(nullptr)
-        , engine_(nullptr)
         , scene_(nullptr)
         , camera_(nullptr)
         , isFirstPersonMode_(false)
@@ -55,9 +54,18 @@ namespace sandbox {
         // 设置窗口属性
         setWindowTitle("iEngine Qt Sandbox");
         resize(1024, 768);
-        
+
+        // 创建菜单栏
+        createMenus();
+
+        // 创建工具栏
+        createToolBar();
+
+        // 初始化引擎
+        initializeEngine();
+
         // 创建Qt窗口抽象（Qt通过父子关系管理生命周期）
-        qtWindow_ = new QtWindow(this);
+        qtWindow_ = new QtWindow(engine_, this);
         
         // 创建一个不拥有所有权的 shared_ptr 包装器（使用空删除器）
         qtWindowWrapper_ = std::shared_ptr<iengine::WindowInterface>(
@@ -76,7 +84,7 @@ namespace sandbox {
         iengine::WindowFactory::registerWindowCreator(
             iengine::WindowType::Qt,
             [this]() -> std::unique_ptr<iengine::WindowInterface> {
-                auto window = std::make_unique<QtWindow>();
+                auto window = std::make_unique<QtWindow>(engine_);
                 //if (window->initialize()) {
                 //    return window;
                 //}
@@ -85,15 +93,6 @@ namespace sandbox {
         );
         
         std::cout << "Qt窗口已注册到Engine的WindowFactory" << std::endl;
-        
-        // 初始化引擎
-        initializeEngine();
-        
-        // 创建菜单栏
-        createMenus();
-        
-        // 创建工具栏
-        createToolBar();
 
         // 设置场景
         setupScene();
@@ -111,11 +110,6 @@ namespace sandbox {
             
             // 【旧版本已弃用】通过回调函数清理
             // qtWindow_->setEventCallback(nullptr);
-            
-            // 2. 清理 QtWindow 持有的 Engine 和 Scene 引用
-            std::cout << "MainWindow: 清理QtWindow持有的引擎和场景引用" << std::endl;
-            qtWindow_->setEngine(nullptr);
-            qtWindow_->setScene(nullptr);
         }
         
         // 3. 清理控制器（它们持有window和camera的引用）
@@ -127,13 +121,13 @@ namespace sandbox {
         std::cout << "MainWindow: 清理相机" << std::endl;
         camera_.reset();
         
-        // 5. 清理场景（它持有Context引用）
-        std::cout << "MainWindow: 清理场景" << std::endl;
-        scene_.reset();
+        //// 5. 清理场景（它持有Context引用）
+        //std::cout << "MainWindow: 清理场景" << std::endl;
+        //scene_.reset();
         
-        // 6. 清理引擎
+        // 6. 清理引擎（引擎将自动清理其持有的场景、渲染器等资源）
         std::cout << "MainWindow: 清理引擎" << std::endl;
-        engine_.reset();
+        engine_.stop();
         
         // 7. Qt 会自动删除 qtWindow_（通过父子关系）
         // 我们不需要手动删除
@@ -147,19 +141,16 @@ namespace sandbox {
             // 创建引擎实例
             iengine::EngineOptions options;
             options.renderer = iengine::RendererType::OpenGL;
-            engine_ = std::make_shared<iengine::Engine>(options);
-            
-            // 将引擎设置到Qt窗口
-            qtWindow_->setEngine(engine_);
+            iengine::Engine engine_(options);
         } catch (const std::exception& e) {
             std::cerr << "Failed to initialize engine: " << e.what() << std::endl;
         }
     }
     
     void MainWindow::setupScene() {
-        if (!engine_) {
-            return;
-        }
+        //if (!engine_) {
+        //    return;
+        //}
         
         try {
             // 创建场景（使用包装器）
@@ -183,34 +174,6 @@ namespace sandbox {
             qtWindow_->addEventListener(globalEventListener_);
             
             std::cout << "当前模式：轨道控制器 - 鼠标拖拽旋转、滚轮缩放\n快捷键：P键切换" << std::endl;
-            
-            //// 创建几何体
-            //auto cubeGeometry = std::make_shared<iengine::Cube>(1.0f);
-            //
-            //// 创建图元
-            //auto cubePrimitive = std::make_shared<iengine::Primitive>(iengine::PrimitiveType::TRIANGLES);
-            //
-            //// 创建网格
-            //auto cubeMesh = std::make_shared<iengine::Mesh>(cubeGeometry, cubePrimitive);
-            //
-            //// 创建材质
-            //iengine::BaseMaterialParams params;
-            //params.name = "RedMaterial";
-            //params.shaderName = "base_material";  // 使用正确的着色器名称
-            //params.color = iengine::Color(1.0f, 0.0f, 0.0f, 1.0f); // 红色
-            //auto material = std::make_shared<iengine::BaseMaterial>(params);
-            //
-            //// 创建模型
-            //auto cubeModel = std::make_shared<iengine::Model>("Cube", cubeMesh, material);
-            //
-            //// 将模型添加到场景
-            //scene_->addComponent(cubeModel);
-            //
-            //// 将场景添加到引擎
-            //engine_->addScene("main", scene_);
-            //
-            //// 将场景设置到Qt窗口
-            //qtWindow_->setScene(scene_);
 
              // 1. 创建红色三角形
             auto triangleGeometry = std::make_shared<iengine::Triangle>();
@@ -276,17 +239,13 @@ namespace sandbox {
             scene_->addComponent(wireframeModel);
 
             // 将场景添加到引擎
-            engine_->addScene("main", scene_);
-
+            engine_.addScene("main", scene_);
             std::cout << "场景创建成功，包含 " << scene_->getComponents().size() << " 个组件" << std::endl;
 
             // 注册内置着色器
             //iengine::ShaderLib::registerBuiltInShaders();
             auto shaderNames = iengine::ShaderLib::getAllShaderNames();
             std::cout << "已注册 " << shaderNames.size() << " 个着色器" << std::endl;
-
-            // 将场景设置到Qt窗口
-            qtWindow_->setScene(scene_);
         } catch (const std::exception& e) {
             std::cerr << "Failed to setup scene: " << e.what() << std::endl;
         }

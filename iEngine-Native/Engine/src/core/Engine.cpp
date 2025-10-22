@@ -15,7 +15,28 @@
 
 namespace iengine {
 
+    // 实例计数器（仅用于调试警告）
+    std::atomic<int> Engine::s_instanceCount{ 0 };
+
     Engine::Engine(const EngineOptions& options) {
+        // 👇 提醒用户不要创建多个实例
+        int count = ++s_instanceCount;
+        if (count > 1) {
+            std::cerr << "\n========================================" << std::endl;
+            std::cerr << "[iengine] ⚠️  WARNING: Multiple Engine Instances!" << std::endl;
+            std::cerr << "========================================" << std::endl;
+            std::cerr << "Current instance count: " << count << std::endl;
+            std::cerr << "\n💡 Recommended practice:" << std::endl;
+            std::cerr << "   - Create only ONE Engine per application" << std::endl;
+            std::cerr << "   - Use multiple Scenes to organize content" << std::endl;
+            std::cerr << "   - engine.addScene(\"name\", scene)" << std::endl;
+            std::cerr << "\n⚡ Impact of multiple instances:" << std::endl;
+            std::cerr << "   - GPU context overhead" << std::endl;
+            std::cerr << "   - Resource duplication (shaders, textures)" << std::endl;
+            std::cerr << "   - Performance degradation" << std::endl;
+            std::cerr << "========================================\n" << std::endl;
+        }
+
         setRenderer(options.renderer, false);
     }
 
@@ -53,10 +74,15 @@ namespace iengine {
 
         running_ = false;
 
+        // 显式释放所有 Scene
+        scenes_.clear();
+
         // 清理渲染器
         if (activeRenderer_) {
             activeRenderer_->cleanup();
         }
+
+		//MaterialManager::cleanup(); // 清理材质管理器中的所有材质
     }
 
     void Engine::addScene(const std::string& name, std::shared_ptr<Scene> scene) {
@@ -77,7 +103,19 @@ namespace iengine {
         }
     }
 
-    std::shared_ptr<Scene> Engine::getScene(const std::string& name) {
+    bool Engine::removeScene(const std::string& name) {
+        return scenes_.erase(name) > 0; // erase 返回删除元素数量
+    }
+
+    bool Engine::hasScene(const std::string& name) const {
+        return scenes_.find(name) != scenes_.end();
+    }
+
+    std::shared_ptr<Scene> Engine::getActiveScene() const {
+        return activeScene_;
+	}
+
+    std::shared_ptr<Scene> Engine::getScene(const std::string& name) const {
         auto it = scenes_.find(name);
         if (it != scenes_.end()) {
             return it->second;
@@ -187,5 +225,11 @@ namespace iengine {
             }
         }
     }
+
+    bool Engine::isReady() const noexcept {
+        return activeRenderer_ != nullptr
+            && activeRenderer_->isInitialized()
+            && activeScene_ != nullptr;
+	}
 
 } // namespace iengine

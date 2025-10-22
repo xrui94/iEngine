@@ -21,6 +21,7 @@ namespace iengine {
         virtual void render(std::shared_ptr<Scene> scene) = 0;
         virtual void resize(int width, int height) = 0;
         virtual void clear() = 0;
+		virtual bool isInitialized() const noexcept = 0;
         
         static bool isRendererType(RendererType type) {
             return type == RendererType::OpenGL || type == RendererType::WebGPU;

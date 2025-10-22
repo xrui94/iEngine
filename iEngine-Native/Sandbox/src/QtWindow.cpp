@@ -13,51 +13,11 @@
 
 namespace sandbox {
 
-    //// 内部Qt Widget类，继承QOpenGLWidget
-    //class QtOpenGLWidget : public QOpenGLWidget {
-    //public:
-    //    QtOpenGLWidget(QtWindow* qtWindow, QWidget* parent = nullptr)
-    //        : QOpenGLWidget(parent), qtWindow_(qtWindow) {
-    //        
-    //        // 设置OpenGL格式
-    //        QSurfaceFormat format;
-    //        format.setDepthBufferSize(24);
-    //        format.setStencilBufferSize(8);
-    //        format.setVersion(3, 3);
-    //        format.setProfile(QSurfaceFormat::CoreProfile);
-    //        setFormat(format);
-    //    }
-
-    //protected:
-    //    void initializeGL() override {
-    //        if (qtWindow_) {
-    //            qtWindow_->initializeGL();
-    //        }
-    //    }
-
-    //    void resizeGL(int w, int h) override {
-    //        if (qtWindow_) {
-    //            qtWindow_->resizeGL(w, h);
-    //        }
-    //    }
-
-    //    void paintGL() override {
-    //        if (qtWindow_) {
-    //            qtWindow_->paintGL();
-    //        }
-    //    }
-
-    //private:
-    //    QtWindow* qtWindow_;
-    //};
-
-    QtWindow::QtWindow(QWidget* parent)
+    QtWindow::QtWindow(iengine::Engine& engine, QWidget* parent)
         : QOpenGLWidget(parent)
-        , context_(nullptr)
+        , engine_(engine)   // 绑定引用
         , eventCallback_(nullptr)
         , eventDispatcher_(std::make_unique<iengine::WindowEventDispatcher>())
-        , engine_(nullptr)
-        , scene_(nullptr)
         , shouldClose_(false)
         , initialized_(false)
         , renderTimer_(new QTimer(this))
@@ -75,9 +35,10 @@ namespace sandbox {
         
         // 设置连续渲染定时器（60FPS）
         connect(renderTimer_, &QTimer::timeout, this, [this]() {
-            this->update();
+            this->update(); // 触发 paintGL
         });
         renderTimer_->setInterval(16); // 约60FPS (1000ms/60 ≈ 16ms)
+        renderTimer_->setTimerType(Qt::PreciseTimer); // 使用精确定时器提高帧率稳定性
         
         std::cout << "QtWindow: 构造函数完成，使用观察者模式事件系统和连续渲染" << std::endl;
     }
@@ -91,17 +52,16 @@ namespace sandbox {
             std::cout << "QtWindow: 已清理所有事件监听器" << std::endl;
         }
         
-        // 清理引擎和场景引用（但不释放它们）
-        scene_.reset();
-        engine_.reset();
-        std::cout << "QtWindow: 已清理引擎和场景引用" << std::endl;
-        
-        // 最后清理 Context（只有在没有其他持有者时才会真正释放）
-        if (context_) {
-            std::cout << "QtWindow: 准备释放 Context，use_count=" << context_.use_count() << std::endl;
-            context_.reset();
-            std::cout << "QtWindow: Context 引用已清理" << std::endl;
-        }
+        //// 清理引擎和场景引用（但不释放它们）
+        //engine_.reset();
+        //std::cout << "QtWindow: 已清理引擎和场景引用" << std::endl;
+        //
+        //// 最后清理 Context（只有在没有其他持有者时才会真正释放）
+        //if (context_) {
+        //    std::cout << "QtWindow: 准备释放 Context，use_count=" << context_.use_count() << std::endl;
+        //    context_.reset();
+        //    std::cout << "QtWindow: Context 引用已清理" << std::endl;
+        //}
         
         std::cout << "QtWindow: 析构完成" << std::endl;
     }
@@ -129,8 +89,9 @@ namespace sandbox {
         return shouldClose_;
     }
 
-    std::shared_ptr<iengine::Context> QtWindow::getContext() const {
-        return context_;
+    std::shared_ptr<iengine::Context> QtWindow::getContext() const
+    {
+		return engine_.getActiveScene()->getContext();
     }
 
     void QtWindow::makeContextCurrent() {
@@ -148,26 +109,18 @@ namespace sandbox {
     const iengine::WindowEventDispatcher& QtWindow::getEventDispatcher() const {
         return *eventDispatcher_;
     }
-
-    void QtWindow::setEngine(std::shared_ptr<iengine::Engine> engine) {
-        engine_ = engine;
-    }
-
-    void QtWindow::setScene(std::shared_ptr<iengine::Scene> scene) {
-        scene_ = scene;
-    }
     
     void QtWindow::startContinuousRendering() {
         if (!renderTimer_->isActive()) {
             renderTimer_->start();
-            std::cout << "QtWindow: 连续渲染已启动 (60FPS)" << std::endl;
+            std::cout << "QtWindow: 连续渲染已启动 (精确60FPS)" << std::endl;
         }
     }
     
     void QtWindow::stopContinuousRendering() {
         if (renderTimer_->isActive()) {
             renderTimer_->stop();
-            std::cout << "QtWindow: 连续渲染已停止，切换到事件驱动模式" << std::endl;
+            std::cout << "QtWindow: 连续渲染已停止，已启用事件驱动智能重绘" << std::endl;
         }
     }
     
@@ -209,11 +162,11 @@ namespace sandbox {
 
         initialized_ = true;
 
-        engine_->start();
+        engine_.start();
         
-        // 启动连续渲染定时器
+        // 默认启动连续渲染定时器（优化后的设置）
         renderTimer_->start();
-        std::cout << "QtWindow: 连续渲染定时器已启动 (60FPS)" << std::endl;
+        std::cout << "QtWindow: 连续渲染定时器已启动 (精确60FPS)" << std::endl;
     }
 
     void QtWindow::resizeGL(int w, int h) {
@@ -238,10 +191,10 @@ namespace sandbox {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 使用Engine渲染场景
-        if (engine_ && scene_ && initialized_) {
+        if (engine_.isReady() && initialized_) {
             try {
                 //engine_->render();
-                engine_->tick();
+                engine_.tick();
             } catch (const std::exception& e) {
                 std::cerr << "Qt窗口Engine渲染失败: " << e.what() << std::endl;
                 // 备用渲染：简单清屏
@@ -264,14 +217,16 @@ namespace sandbox {
         windowEvent.data.mouseButton.x = event->x();
         windowEvent.data.mouseButton.y = event->y();
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::mousePressEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::mousePressEvent(event);
+        }
     }
 
     void QtWindow::mouseReleaseEvent(QMouseEvent* event) {
@@ -282,14 +237,16 @@ namespace sandbox {
         windowEvent.data.mouseButton.x = event->x();
         windowEvent.data.mouseButton.y = event->y();
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::mouseReleaseEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::mouseReleaseEvent(event);
+        }
     }
 
     void QtWindow::mouseMoveEvent(QMouseEvent* event) {
@@ -298,14 +255,16 @@ namespace sandbox {
         windowEvent.data.mouseMove.x = event->x();
         windowEvent.data.mouseMove.y = event->y();
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::mouseMoveEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘（鼠标移动很关键）
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::mouseMoveEvent(event);
+        }
     }
 
     void QtWindow::wheelEvent(QWheelEvent* event) {
@@ -314,14 +273,16 @@ namespace sandbox {
         windowEvent.data.mouseScroll.xoffset = event->angleDelta().x() / 120.0;
         windowEvent.data.mouseScroll.yoffset = event->angleDelta().y() / 120.0;
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::wheelEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘（滚轮缩放很关键）
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::wheelEvent(event);
+        }
     }
 
     void QtWindow::keyPressEvent(QKeyEvent* event) {
@@ -331,14 +292,16 @@ namespace sandbox {
         windowEvent.data.key.action = iengine::KeyAction::Press;
         windowEvent.data.key.mods = 0;
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::keyPressEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘（按键切换控制器等）
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::keyPressEvent(event);
+        }
     }
 
     void QtWindow::keyReleaseEvent(QKeyEvent* event) {
@@ -348,14 +311,16 @@ namespace sandbox {
         windowEvent.data.key.action = iengine::KeyAction::Release;
         windowEvent.data.key.mods = 0;
         
-        if (!eventDispatcher_->dispatchEvent(windowEvent)) {
-            QOpenGLWidget::keyReleaseEvent(event);
+        bool eventHandled = eventDispatcher_->dispatchEvent(windowEvent);
+        
+        // 在事件驱动模式下，如果事件被处理了，就触发重绘
+        if (eventHandled && !renderTimer_->isActive()) {
+            update(); // 事件驱动模式下的智能重绘
         }
         
-        // 【旧版本已弃用】通过回调函数分发（会导致双重处理）
-        // if (eventCallback_) {
-        //     eventCallback_(windowEvent);
-        // }
+        if (!eventHandled) {
+            QOpenGLWidget::keyReleaseEvent(event);
+        }
     }
     
     // Qt事件转换辅助函数

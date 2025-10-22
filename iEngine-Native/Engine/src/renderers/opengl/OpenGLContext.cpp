@@ -36,7 +36,7 @@ namespace iengine {
         // 设置默认OpenGL状态
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
-        glClearColor(0.1f, 0.1f, 0.3f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         
         // 获取上下文信息
         window_->getSize(width_, height_);

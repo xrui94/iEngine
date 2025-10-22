@@ -1,18 +1,19 @@
 #pragma once
 
+#include "iengine/iengine.h"
+
 #include <QMainWindow>
 #include <memory>
 
-// 前向声明
-namespace iengine {
-    class Engine;
-    class Scene;
-    class PerspectiveCamera;
-	class OrbitControls;
-	class FirstPersonControls;
-    class WindowInterface;  // 添加 WindowInterface 的前向声明
-    class WindowEventListener;
-}
+//// 前向声明
+//namespace iengine {
+//    class Scene;
+//    class PerspectiveCamera;
+//	class OrbitControls;
+//	class FirstPersonControls;
+//    class WindowInterface;  // 添加 WindowInterface 的前向声明
+//    class WindowEventListener;
+//}
 
 namespace sandbox {
     class QtWindow;
@@ -60,7 +61,7 @@ namespace sandbox {
         // - 最后让 Qt 自动清理 QtWindow
         QtWindow* qtWindow_;  // Qt 通过父子关系管理生命周期
         std::shared_ptr<iengine::WindowInterface> qtWindowWrapper_;  // 用于传递给引擎，但不拥有所有权
-        std::shared_ptr<iengine::Engine> engine_;
+        iengine::Engine engine_;
         std::shared_ptr<iengine::Scene> scene_;
         std::shared_ptr<iengine::PerspectiveCamera> camera_;
         std::shared_ptr<iengine::OrbitControls> orbitControls_;        // 轨道控制器
