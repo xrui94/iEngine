@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>双视角渲染示例</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #222;
+        }
+        #glCanvas {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 0;
+        }
+        .titlebar {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 60px;
+            background: rgba(40, 40, 40, 0.7);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 3;
+            letter-spacing: 2px;
+            user-select: none;
+        }
+        .toolbar {
+            position: absolute;
+            left: 0;
+            top: 60px;
+            width: 56px;
+            height: calc(100vh - 60px);
+            background: rgba(30, 30, 30, 0.6);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .toolbar button {
+            width: 40px;
+            height: 40px;
+            margin: 8px 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(80, 80, 80, 0.7);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #fff;
+            transition: background 0.2s;
+        }
+        .toolbar button.active {
+            background: #2196f3;
+        }
+        .toolbar button:hover {
+            background: #1976d2;
+        }
+        .toolbar hr {
+            width: 80%;
+            border: 0;
+            border-top: 1px solid #444;
+            margin: 12px 0;
+        }
+        .view-selector {
+            position: absolute;
+            right: 20px;
+            top: 80px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+            color: white;
+        }
+        .view-selector label {
+            display: block;
+            margin: 5px 0;
+        }
+        .split-view {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            z-index: 1;
+        }
+        .view-half {
+            width: 50%;
+            height: 100%;
+        }
+        #leftCanvas, #rightCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .camera-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="titlebar">
+        双视角渲染示例
+    </div>
+    
+    <div class="toolbar">
+        <button id="btn-webgl" title="WebGL渲染器"><span class="material-icons">memory</span></button>
+        <button id="btn-webgpu" title="WebGPU渲染器"><span class="material-icons">developer_board</span></button>
+        <hr>
+        <button id="btn-orbit" title="轨道控制器"><span class="material-icons">360</span></button>
+        <button id="btn-fps" title="第一人称控制器"><span class="material-icons">person</span></button>
+    </div>
+    
+    <div class="view-selector">
+        <label>
+            <input type="radio" name="viewMode" value="single" checked> 单视角
+        </label>
+        <label>
+            <input type="radio" name="viewMode" value="split"> 分屏双视角
+        </label>
+    </div>
+    
+    <!-- 单视角视图 -->
+    <canvas id="glCanvas" tabindex="0"></canvas>
+    
+    <!-- 分屏双视角视图 -->
+    <div class="split-view" id="splitView" style="display: none;">
+        <div class="view-half">
+            <canvas id="leftCanvas" tabindex="0"></canvas>
+        </div>
+        <div class="view-half">
+            <canvas id="rightCanvas" tabindex="0"></canvas>
+        </div>
+    </div>
+    
+    <div class="camera-info" id="cameraInfo">
+        当前视角: 主视角 (0, 0, 5)
+    </div>
+    
+    <script type="module">
+        import iEngine from '../dist/iengine.js'
+
+        /**
+         * 创建一个红色的三角形实体
+         */
+        function createTriangleEntity() {
+            // 创建实体
+            const triangleEntity = new iEngine.Node('Triangle');
+            
+            // 创建网格
+            const triangleMesh = new iEngine.Mesh(
+                new iEngine.Triangle(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.TRIANGLES,
+                    {
+                        arrayStride: 12,
+                        attributes: [
+                            {
+                                name: 'aPosition',
+                                format: 'float32x3',
+                                offset: 0,
+                                shaderLocation: 0
+                            }
+                        ]
+                    },
+                )
+            );
+
+            // 创建材质
+            const material = new iEngine.BaseMaterial({
+                shaderName: 'base_material'
+            });
+            material.setColor(1.0, 0.0, 0.0); // 红色
+
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                triangleMesh, 
+                material, 
+                iEngine.RenderLayerID.Opaque
+            );
+            triangleEntity.addComponent(renderableComponent);
+
+            return triangleEntity;
+        }
+
+        /**
+         * 创建一个立方体实体
+         */
+        function createCubeEntity() {
+            // 创建实体
+            const cubeEntity = new iEngine.Node('Cube');
+            
+            // 创建网格
+            const cubeMesh = new iEngine.Mesh(
+                new iEngine.Cube(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.TRIANGLES,
+                    // 网格数据保持不变
+                )
+            );
+
+            // 创建PBR材质
+            const cubeMaterial = new iEngine.PbrMaterial({
+                shaderName: 'base_pbr',
+                baseColor: new iEngine.Color(1.0, 1.0, 1.0),
+                baseColorMap: '../../assets/textures/Wood048_1K-PNG/Wood048_1K-PNG_Color.png',
+                metallic: 0.8,
+                roughness: 0.02
+            });
+
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                cubeMesh, 
+                cubeMaterial, 
+                iEngine.RenderLayerID.Opaque
+            );
+            cubeEntity.addComponent(renderableComponent);
+            
+            return cubeEntity;
+        }
+
+        /**
+         * 创建一个黄色线框立方体实体
+         */
+        function createWireframeCubeEntity() {
+            // 创建实体
+            const wireframeCubeEntity = new iEngine.Node('CubeWireframe');
+            
+            // 创建网格
+            const wireframeCubeMesh = new iEngine.Mesh(
+                new iEngine.Cube(),
+                new iEngine.Primitive(
+                    iEngine.PrimitiveType.LINES,
+                    // 网格数据保持不变
+                )
+            );
+            
+            // 创建线框材质
+            const wireframeMaterial = new iEngine.BaseMaterial({
+                shaderName: 'base_material'
+            });
+            wireframeMaterial.setColor(1.0, 1.0, 0.0); // 黄色
+            
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                wireframeCubeMesh, 
+                wireframeMaterial, 
+                iEngine.RenderLayerID.Opaque
+            );
+            wireframeCubeEntity.addComponent(renderableComponent);
+            
+            return wireframeCubeEntity;
+        }
+
+        // 创建场景和实体的函数
+        function createScene(canvas) {
+            const scene = new iEngine.Scene(canvas, {
+                useWebGL1: true,
+                attrs: {
+                    antialias: true,
+                    alpha: true,
+                }
+            });
+            
+            // 添加光源组件（ECS方式）
+            // 添加环境光
+            const ambientLight = new iEngine.AmbientLight({
+                color: new iEngine.Color(0.3, 0.3, 0.3)
+            });
+            const ambientLightEntity = new iEngine.Node('AmbientLight');
+            const ambientLightComponent = new iEngine.LightComponent(ambientLight);
+            ambientLightEntity.addComponent(ambientLightComponent);
+            scene.addEntity(ambientLightEntity);
+
+            // 添加平行光
+            const directionalLight = new iEngine.DirectionalLight({
+                color: new iEngine.Color(1.0, 1.0, 1.0),
+                intensity: 5.0
+            });
+            const directionalLightEntity = new iEngine.Node('DirectionalLight');
+            const directionalLightComponent = new iEngine.LightComponent(directionalLight);
+            directionalLightEntity.addComponent(directionalLightComponent);
+            scene.addEntity(directionalLightEntity);
+
+            // 创建ECS实体并添加到场景中
+            const triangleEntity = createTriangleEntity();
+            const cubeEntity = createCubeEntity();
+            const wireframeCubeEntity = createWireframeCubeEntity();
+            // 将实体添加到场景
+            scene.addEntity(triangleEntity);
+            scene.addEntity(cubeEntity);
+            scene.addEntity(wireframeCubeEntity);
+            
+            return scene;
+        }
+
+        // 1. 初始化主引擎
+        const engine = new iEngine.Engine({
+            renderer: 'webgpu',
+        });
+
+        // 2. 启动引擎
+        engine.start();
+
+        // 3. 获取画布元素
+        const mainCanvas = document.getElementById('glCanvas');
+        const leftCanvas = document.getElementById('leftCanvas');
+        const rightCanvas = document.getElementById('rightCanvas');
+        
+        // 4. 创建场景
+        const mainScene = createScene(mainCanvas);
+        const leftScene = createScene(leftCanvas);
+        const rightScene = createScene(rightCanvas);
+        
+        // 5. 创建相机
+        const mainCamera = new iEngine.PerspectiveCamera(60, mainCanvas.width / mainCanvas.height, 0.1, 1000);
+        mainCamera.setPosition(0, 0, 5);
+        mainCamera.lookAt(0, 0, 0);
+        
+        const leftCamera = new iEngine.PerspectiveCamera(60, leftCanvas.width / leftCanvas.height, 0.1, 1000);
+        leftCamera.setPosition(-3, 2, 3);
+        leftCamera.lookAt(0, 0, 0);
+        
+        const rightCamera = new iEngine.PerspectiveCamera(60, rightCanvas.width / rightCanvas.height, 0.1, 1000);
+        rightCamera.setPosition(3, 2, 3);
+        rightCamera.lookAt(0, 0, 0);
+
+        // 将相机添加到对应场景
+        mainScene.addCamera(mainCamera);
+        mainScene.activeCamera = mainCamera;
+        
+        leftScene.addCamera(leftCamera);
+        leftScene.activeCamera = leftCamera;
+        
+        rightScene.addCamera(rightCamera);
+        rightScene.activeCamera = rightCamera;
+
+        // 6. 创建控制器
+        let controls = new iEngine.OrbitControls(mainCamera, mainCanvas);
+
+        // 7. 将场景添加到引擎
+        engine.addScene('main-scene', mainScene);
+
+        // 8. 为分屏模式创建独立的引擎实例
+        let leftEngine, rightEngine;
+        
+        function initSplitView() {
+            // 创建独立的引擎实例
+            leftEngine = new iEngine.Engine({
+                renderer: 'webgpu',
+            });
+            rightEngine = new iEngine.Engine({
+                renderer: 'webgpu',
+            });
+            
+            // 启动引擎
+            leftEngine.start();
+            rightEngine.start();
+            
+            // 添加场景到引擎
+            leftEngine.addScene('left-scene', leftScene);
+            rightEngine.addScene('right-scene', rightScene);
+        }
+        
+        // 9. 渲染函数
+        let viewMode = 'single'; // 'single' 或 'split'
+        
+        function renderSingleView() {
+            // 使用活动相机渲染
+            engine.tick();
+            
+            // 更新相机信息显示
+            const pos = mainCamera.position;
+            document.getElementById('cameraInfo').textContent = 
+                `当前视角: 主视角 (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`;
+        }
+        
+        function renderSplitView() {
+            // 如果还没有初始化分屏视图，则初始化
+            if (!leftEngine) {
+                initSplitView();
+            }
+            
+            // 分别渲染左右视图
+            leftEngine.tick();
+            rightEngine.tick();
+            
+            // 更新相机信息显示
+            document.getElementById('cameraInfo').textContent = 
+                '当前视角: 分屏模式 (左: (-3, 2, 3), 右: (3, 2, 3))';
+        }
+        
+        // 10. 控制渲染循环
+        engine.setAnimationLoop(() => {
+            if (viewMode === 'single') {
+                renderSingleView();
+            } else {
+                renderSplitView();
+            }
+        });
+
+        // 11. 工具栏按钮事件
+        document.getElementById('btn-webgl').onclick = async () => {
+            await engine.setRenderer('webgl');
+            document.getElementById('btn-webgl').classList.add('active');
+            document.getElementById('btn-webgpu').classList.remove('active');
+        };
+        document.getElementById('btn-webgpu').onclick = async () => {
+            await engine.setRenderer('webgpu');
+            document.getElementById('btn-webgpu').classList.add('active');
+            document.getElementById('btn-webgl').classList.remove('active');
+        };
+        document.getElementById('btn-orbit').onclick = () => {
+            if (controls && controls.dispose) controls.dispose();
+            controls = new iEngine.OrbitControls(mainCamera, mainCanvas);
+            document.getElementById('btn-orbit').classList.add('active');
+            document.getElementById('btn-fps').classList.remove('active');
+        };
+        document.getElementById('btn-fps').onclick = () => {
+            if (controls && controls.dispose) controls.dispose();
+            controls = new iEngine.FirstPersonControls(mainCamera, mainCanvas);
+            document.getElementById('btn-fps').classList.add('active');
+            document.getElementById('btn-orbit').classList.remove('active');
+        };
+
+        // 12. 视图模式切换
+        document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                viewMode = this.value;
+                
+                if (viewMode === 'single') {
+                    document.getElementById('glCanvas').style.display = 'block';
+                    document.getElementById('splitView').style.display = 'none';
+                    mainScene.activeCamera = mainCamera;
+                } else {
+                    document.getElementById('glCanvas').style.display = 'none';
+                    document.getElementById('splitView').style.display = 'flex';
+                    // 调整画布大小
+                    leftCanvas.width = leftCanvas.clientWidth;
+                    leftCanvas.height = leftCanvas.clientHeight;
+                    rightCanvas.width = rightCanvas.clientWidth;
+                    rightCanvas.height = rightCanvas.clientHeight;
+                    
+                    // 更新相机宽高比
+                    leftCamera.setAspect(leftCanvas.width / leftCanvas.height);
+                    rightCamera.setAspect(rightCanvas.width / rightCanvas.height);
+                }
+            });
+        });
+
+        // 13. 窗口大小调整
+        window.addEventListener('resize', () => {
+            // 更新画布大小
+            mainCanvas.width = mainCanvas.clientWidth;
+            mainCanvas.height = mainCanvas.clientHeight;
+            leftCanvas.width = leftCanvas.clientWidth;
+            leftCanvas.height = leftCanvas.clientHeight;
+            rightCanvas.width = rightCanvas.clientWidth;
+            rightCanvas.height = rightCanvas.clientHeight;
+            
+            // 更新相机宽高比
+            mainCamera.setAspect(mainCanvas.width / mainCanvas.height);
+            leftCamera.setAspect(leftCanvas.width / leftCanvas.height);
+            rightCamera.setAspect(rightCanvas.width / rightCanvas.height);
+        });
+    </script>
+</body>
+</html>

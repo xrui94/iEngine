@@ -7,7 +7,6 @@ import { OrbitControls } from "./views/controls/OrbitControls";
 import { FirstPersonControls } from "./views/controls/FirstPersonControls";
 import { Matrix4 } from "./math/Matrix4";
 import { Vector3 } from "./math/Vector3";
-import { SimpleScene } from "./scenes/SimpleScene";
 import { Scene } from "./scenes/Scene";
 import { Primitive, PrimitiveType } from "./core/Primitive";
 import { Geometry } from "./geometries/Geometry";
@@ -23,13 +22,17 @@ import { PbrMaterial } from "./materials/PbrMaterial";
 import { Texture } from "./textures/Texture";
 import { Texture3D } from "./textures/Texture3D";
 
-import { Model } from "./core/Model";
+import { Node } from "./core/Node";
 
 import { Light } from "./lights/Light";
+import { LightComponent } from "./lights/LightComponent";
 import { AmbientLight } from "./lights/AmbientLight";
 import { DirectionalLight } from "./lights/DirectionalLight";
 import { PointLight } from "./lights/PointLight";
 import { SpotLight } from "./lights/SpotLight";
+
+import { RenderLayerID } from "./renderers/RenderLayer";
+import { RenderableComponent } from "./renderers/RenderableComponent";
 
 const iEngine = {
     Engine,
@@ -39,7 +42,6 @@ const iEngine = {
     OrthographicCamera,
     OrbitControls,
     FirstPersonControls,
-    SimpleScene,
     Scene,
     //
     Primitive,
@@ -60,12 +62,16 @@ const iEngine = {
     Texture3D,
     //
     Light,
+    LightComponent,
     AmbientLight,
     DirectionalLight,
     PointLight,
     SpotLight,
     //
-    Model
+    Node,
+    //
+    RenderLayerID,
+    RenderableComponent,
 };
 
 export default Object.freeze(iEngine);

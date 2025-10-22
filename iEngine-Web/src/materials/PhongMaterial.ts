@@ -1,10 +1,12 @@
 import { Material } from './Material';
 import { Color } from './Color';
+import { Matrix4 } from '../math/Matrix4';
+import type { Renderable } from '../renderers/Renderable';
 
 import type { TextureInfo } from './Material';
 import type { WebGPUShaderModule } from '../renderers/webgpu/WebGPUShaderModule';
 import type { Mesh } from '../core/Mesh';
-
+import type { RenderableComponent } from '../renderers/RenderableComponent';
 
 export interface PhongMaterialParams {
     name?: string;
@@ -12,6 +14,7 @@ export interface PhongMaterialParams {
     color?: Color;
     specular?: Color;
     shininess?: number;
+
 }
 
 export class PhongMaterial extends Material {
@@ -40,9 +43,9 @@ export class PhongMaterial extends Material {
         return defines;
     }
 
-    getUniforms(context: any, camera: any, model: any, lights: any) {
+    getUniforms(context: any, camera: any, component: Renderable, lights: any) {
         return {
-            uModelViewMatrix: camera.getViewMatrix().multiply(model.transform),
+            uModelViewMatrix: camera.getViewMatrix().multiply(component.worldTransform),
             uProjectionMatrix: camera.getProjectionMatrix(),
             // ...其它uniform
         };

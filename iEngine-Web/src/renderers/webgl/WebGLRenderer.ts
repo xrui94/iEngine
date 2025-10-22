@@ -1,20 +1,17 @@
+import { Renderer } from '../Renderer';
 import { Camera } from '../../views/cameras/Camera';
 import { PerspectiveCamera } from '../../views/cameras/PerspectiveCamera';
-// import { Mesh } from '../../core/Mesh';
 import { Scene } from '../../scenes/Scene';
-import { ShaderLib, BaseShaders, makeShaderVariantKey } from '../../shaders/ShaderLib';
-import { WebGLShaderProgram } from './WebGLShaderProgram';
-import { WebGLRenderPipeline } from './WebGLRenderPipeline';
-import { WebGLContext } from './WebGLContext';
-import { Renderer } from '../Renderer';
 import { Light } from '../../lights/Light';
-import { Texture } from '../../textures/Texture';
+import { Renderable } from '../Renderable';
+import { WebGLShaderProgram } from './WebGLShaderProgram';
+import { WebGLContext } from './WebGLContext';
+import { ShaderLib } from '../../shaders/ShaderLib';
+import { WebGLRenderPipeline, WebGLRenderPipelineState } from './WebGLRenderPipeline';
 
-import type { WebGLContextOptions } from './WebGLContext';
-import type { WebGLRenderPipelineState } from './WebGLRenderPipeline';
 import type { GraphicsAPI } from '../Renderer';
 import type { Mesh } from '../../core/Mesh';
-
+import type { WebGLContextOptions } from './WebGLContext';
 
 export class WebGLRenderer extends Renderer {
     private context!: WebGLContext;
@@ -122,10 +119,10 @@ export class WebGLRenderer extends Renderer {
     // }
 
     getOrCreatePipeline(mesh: Mesh, shader: WebGLShaderProgram, state?: WebGLRenderPipelineState): WebGLRenderPipeline {
-        const key = WebGLRenderPipeline.makeHash(mesh, shader);
+        const key = WebGLRenderPipeline.makeHash(mesh, shader, state);
         let pipeline = this.renderPipelineCache.get(key);
         if (!pipeline) {
-            pipeline = new WebGLRenderPipeline(this.context, mesh, shader);
+            pipeline = new WebGLRenderPipeline(this.context, mesh, shader, state);
             this.renderPipelineCache.set(key, pipeline);
         }
         return pipeline;
@@ -153,23 +150,26 @@ export class WebGLRenderer extends Renderer {
             return;
         }
 
-        // 获取场景中的所有组件（可渲染的对象）
-        const components = scene.getComponents();
+        // 从场景中收集所有可渲染对象
+        const renderables: Renderable[] = [];
+        scene.collectRenderables(renderables);
+
         // 检查场景是否有组件
         // 如果没有组件，直接返回
-        if (components.length === 0) {
+        if (renderables.length === 0) {
             console.warn("No components to render in the scene");
             return;
         }
         
         // 获取场景中的所有光照
-        const lights: Light[] = scene.getLights();
+        const lights: Light[] = [];
+        scene.collectLights(lights);
         
         // 清除画布
         this.context.clear();
         
         // 遍历所有组件，渲染每个组件
-        for (const component of components) {
+        for (const component of renderables) {
             // // 更新model中的一些状态等？
             // component.update(this.context, camera, shader);
 
@@ -251,4 +251,5 @@ export class WebGLRenderer extends Renderer {
             pipeline.unbind(this.context);
         }
     }
+
 }

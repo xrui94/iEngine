@@ -4,10 +4,12 @@ import { Texture } from '../textures/Texture';
 import { DirectionalLight } from '../lights/DirectionalLight';
 import { WebGLConstants } from '../renderers/webgl/WebGLConstants';
 import { Context } from '../renderers/Context';
+import { Matrix3 } from '../math/Matrix3';
+import { Matrix4 } from '../math/Matrix4';
+import type { Renderable } from '../renderers/Renderable';
 
 import type { TextureInfo } from './Material';
 import type { Camera } from '../views/cameras/Camera';
-import type { Renderable } from '../core/Model';
 import type { Light } from '../lights/Light';
 import type { Mesh } from '../core/Mesh';
 import type { WebGLRenderPipelineState } from '../renderers/webgl/WebGLRenderPipeline';
@@ -268,12 +270,11 @@ export class PbrMaterial extends Material {
         }
 
         // 计算法线矩阵
-        const modelMatrix = component.transform;
-        const normalMatrix = modelMatrix.inverse().transpose().toMatrix3();
+        const normalMatrix = component.worldTransform.inverse().transpose().toMatrix3();
 
         // 贴图相关 uniform
         const uniforms: Record<string, any> = {
-            uModelViewMatrix: camera.getViewMatrix().multiply(component.transform),
+            uModelViewMatrix: camera.getViewMatrix().multiply(component.worldTransform),
             uProjectionMatrix: camera.getProjectionMatrix(),
             uNormalMatrix: normalMatrix,
 

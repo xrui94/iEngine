@@ -4,11 +4,6 @@ export type RendererType = 'webgl' | 'webgpu';
 export type GraphicsAPI = 'webgl1' | 'webgl2' | 'webgpu';
 
 export abstract class Renderer {
-    // abstract getOrCreateShader(
-    //     shaderName: string,
-    //     defines: Record<string, string | number | boolean>
-    // ): WebGLShaderProgram | WebGPUShaderModule | null;
-
     static isRendererType(value: any): value is RendererType {
         return value === 'webgl' || value === 'webgpu';
     }
@@ -19,9 +14,9 @@ export abstract class Renderer {
 
     abstract isInitialized(): boolean;
 
+    // 渲染方法，只接收场景参数
     abstract render(scene: Scene): void;
 
-    // abstract setCamera(camera: Camera): void;
     abstract resize(): void;
 
     abstract clear(): void;

@@ -1,15 +1,14 @@
 import { Context } from '../Context';
-import { iMath } from '../../math/Math'
+import { Matrix4 } from '../../math/Matrix4';
+import { Vector3 } from '../../math/Vector3';
+import { iMath } from '../../math/Math';
+import { Primitive, VertexLayout } from '../../core/Primitive';
 import { Texture } from '../../textures/Texture';
-import {
-    getWebGLWrapMode,
-    getWebGLMinFilter,
-    getWebGLMagFilter
-} from '../../textures/TextureUtils';
+import { Renderable } from '../Renderable';
+import { WriteBufferDescriptor } from '../BufferDescriptor';
+import { getWebGLWrapMode, getWebGLMinFilter, getWebGLMagFilter } from '../../textures/TextureUtils';
 
-import { Primitive, type VertexLayout } from '../../core/Primitive';
-import type { Model, Renderable } from '../../core/Model';
-import type { WriteBufferDescriptor } from '../BufferDescriptor';
+import type { Mesh } from '../../core/Mesh';
 import type { TextureDescriptor } from '../TextureDescriptor';
 
 
@@ -518,7 +517,7 @@ export class WebGLContext extends Context {
         this.gl.useProgram(program);
     }
 
-    draw(component: Renderable) {
+    draw(component: Renderable | { mesh: Mesh }) {
         // 绑定VAO
         // const vao = component.mesh.getVertexArrayObject();
         // if (!vao) {

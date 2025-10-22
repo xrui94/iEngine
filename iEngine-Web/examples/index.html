@@ -147,23 +147,17 @@
         import iEngine from '../dist/iengine.js'
 
         /**
-         * 创建一个红色的三角形模型
+         * 创建一个红色的三角形实体
          */
-        function createTriangle() {
-            // 添加triangle
+        function createTriangleEntity() {
+            // 创建实体
+            const triangleEntity = new iEngine.Node('Triangle');
+            
+            // 创建网格
             const triangleMesh = new iEngine.Mesh(
                 new iEngine.Triangle(),
                 new iEngine.Primitive(
                     iEngine.PrimitiveType.TRIANGLES,
-                    // {
-                    //     name: 'aPosition',
-                    //     size: 3,
-                    //     type: WebGLRenderingContext.FLOAT,
-                    //     normalized: false,
-                    //     stride: 12,
-                    //     offset: 0,
-                    // },
-
                     {
                         arrayStride: 12,
                         attributes: [
@@ -178,120 +172,91 @@
                 )
             );
 
-            //
+            // 创建材质
             const material = new iEngine.BaseMaterial({
                 shaderName: 'base_material'
             });
             material.setColor(1.0, 0.0, 0.0); // 红色
 
-            //
-            const triangleModel = new iEngine.Model('Triangle', triangleMesh, material);
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                triangleMesh, 
+                material, 
+                iEngine.RenderLayerID.Opaque
+            );
+            triangleEntity.addComponent(renderableComponent);
 
-            // // 添加一个自转动画
-            // triangleModel.addAnimation((m, dt) => {
-            //     m.rotate(new Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
-            // });
-
-            // this.addComponent(triangleModel);
-            return triangleModel;
+            return triangleEntity;
         }
 
         /**
-         * 创建一个立方体模型
+         * 创建一个立方体实体
          */
-        function createCube() {
-            // 添加Cube
+        function createCubeEntity() {
+            // 创建实体
+            const cubeEntity = new iEngine.Node('Cube');
+            
+            // 创建网格
             const cubeMesh = new iEngine.Mesh(
                 new iEngine.Cube(),
                 new iEngine.Primitive(
                     iEngine.PrimitiveType.TRIANGLES,
-                    // [
-                    //     {
-                    //         name: 'aPosition',
-                    //         size: 3,
-                    //         type: WebGLRenderingContext.FLOAT,
-                    //         normalized: false,
-                    //         stride: 12,
-                    //         offset: 0,
-                    //     },
-                    //     {
-                    //         name: 'aNormal',
-                    //         size: 3,
-                    //         type: WebGLRenderingContext.FLOAT,
-                    //         normalized: false,
-                    //         stride: 12,
-                    //         offset: 0,
-                    //     },
-                    // ]
+                    // 网格数据保持不变
                 )
             );
 
-            //
-            // const cubeMaterial = new BaseMaterial('base_material');
-            // cubeMaterial.setColor(0.0, 0.5, 1.0); // 蓝色
-
+            // 创建PBR材质
             const cubeMaterial = new iEngine.PbrMaterial({
                 shaderName: 'base_pbr',
                 baseColor: new iEngine.Color(1.0, 1.0, 1.0),
                 baseColorMap: '../../assets/textures/Wood048_1K-PNG/Wood048_1K-PNG_Color.png',
-                // baseColorMap: '../assets/textures/building-facade-windows_256x256.jpg',
-                // baseColorMap: '../assets/textures/Metal001_1K-PNG/Metal001_1K-PNG_Color.png',
                 metallic: 0.8,
                 roughness: 0.02
             });
 
-            //
-            const cubeModel = new iEngine.Model('Cube', cubeMesh, cubeMaterial);
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                cubeMesh, 
+                cubeMaterial, 
+                iEngine.RenderLayerID.Opaque
+            );
+            cubeEntity.addComponent(renderableComponent);
             
-            // 添加一个自转动画
-            // cubeModel.addAnimation((m, dt) => {
-            //     m.rotate(new iEngine.Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
-            // });
-            
-            // this.addComponent(cubeModel);
-            return cubeModel;
+            return cubeEntity;
         }
 
         /**
-         * 创建一个黄色线框立方体模型
+         * 创建一个黄色线框立方体实体
          */
-        function createWireframeCube() {
-            // 添加Wireframe Cube
+        function createWireframeCubeEntity() {
+            // 创建实体
+            const wireframeCubeEntity = new iEngine.Node('CubeWireframe');
+            
+            // 创建网格
             const wireframeCubeMesh = new iEngine.Mesh(
                 new iEngine.Cube(),
                 new iEngine.Primitive(
                     iEngine.PrimitiveType.LINES,
-                    // [
-                    //     {
-                    //         name: 'aPosition',
-                    //         size: 3,
-                    //         type: WebGLRenderingContext.FLOAT,
-                    //         normalized: false,
-                    //         stride: 12,
-                    //         offset: 0,
-                    //     },
-                    // ]
+                    // 网格数据保持不变
                 )
             );
             
-            // 创建一个黄色线框材质
+            // 创建线框材质
             const wireframeMaterial = new iEngine.BaseMaterial({
                 shaderName: 'base_material'
             });
             wireframeMaterial.setColor(1.0, 1.0, 0.0); // 黄色
             
-            //
-            const wireframeCubeModel = new iEngine.Model('CubeWireframe', wireframeCubeMesh, wireframeMaterial);
+            // 创建渲染组件并添加到实体
+            const renderableComponent = new iEngine.RenderableComponent(
+                wireframeCubeMesh, 
+                wireframeMaterial, 
+                iEngine.RenderLayerID.Opaque
+            );
+            wireframeCubeEntity.addComponent(renderableComponent);
             
-            // 添加一个自转动画
-            // wireframeCubeModel.addAnimation((m, dt) => {
-            //     m.rotate(new Vector3(0, 1, 0), dt * 0.5); // 每秒旋转0.5弧度
-            // });
-            
-            // this.addComponent(wireframeCubeModel);
-            return wireframeCubeModel;
+            return wireframeCubeEntity;
         }
-
 
         // 1. 初始化引擎
         const engine = new iEngine.Engine({
@@ -321,56 +286,43 @@
         // 5. 创建相机的控制器
         let controls = new iEngine.OrbitControls(camera, canvas);
 
-        // 6. 添加模型、光源到场景中
-        // 添加光源
-        scene.addLight(new iEngine.AmbientLight({
+        // 6. 添加光源组件（ECS方式）
+        // 添加环境光
+        const ambientLight = new iEngine.AmbientLight({
             color: new iEngine.Color(0.3, 0.3, 0.3)
-        })); // 添加环境光
-        scene.addLight(new iEngine.DirectionalLight({
+        });
+        const ambientLightEntity = new iEngine.Node('AmbientLight');
+        const ambientLightComponent = new iEngine.LightComponent(ambientLight);
+        ambientLightEntity.addComponent(ambientLightComponent);
+        scene.addEntity(ambientLightEntity);
+
+        // 添加平行光
+        const directionalLight = new iEngine.DirectionalLight({
             color: new iEngine.Color(1.0, 1.0, 1.0),
             intensity: 5.0
-        })); // 添加平行光照
+        });
+        const directionalLightEntity = new iEngine.Node('DirectionalLight');
+        const directionalLightComponent = new iEngine.LightComponent(directionalLight);
+        directionalLightEntity.addComponent(directionalLightComponent);
+        scene.addEntity(directionalLightEntity);
 
-        // 添加模型
-        scene.addComponent(createTriangle());
-        scene.addComponent(createCube());
-        scene.addComponent(createWireframeCube());
+        // 7. 创建ECS实体并添加到场景中
+        const triangleEntity = createTriangleEntity();
+        const cubeEntity = createCubeEntity();
+        const wireframeCubeEntity = createWireframeCubeEntity();
+        // 将实体添加到场景
+        scene.addEntity(triangleEntity);
+        scene.addEntity(cubeEntity);
+        scene.addEntity(wireframeCubeEntity);
 
         // 将场景添加到引擎
-        engine.addScene('default-simple-scene', scene);
+        engine.addScene('simple-scene', scene);
 
-        // 启动引擎（可以在 Scene 添加到场景后，再通过 start 方法启动引擎）
-        // engine.start();
-
-        // 8. 控制渲染循环（方式1）
+        // 8. 控制渲染循环（ECS架构方式）
         engine.setAnimationLoop(() => {
-            // 可以添加任意逻辑
-
-            // 引擎标准的帧渲染更新
+            // 引擎标准的帧渲染更新（会自动更新所有实体）
             engine.tick();
         });
-
-        // // 8. 控制渲染循环（方式2）
-        // function animate() {
-        //     requestAnimationFrame(animate);    
-        //     // 可以添加任意自定义逻辑
-        //     engine.tick();
-        // }
-        // animate();
-
-        // 启动引擎（不能在调用了 tick 方法后，才 start 引擎，这将导致引擎抛出异常！！！）
-        // engine.start();
-
-        // // 9. 停止
-        // setTimeout(() => {
-        //     alert('已经过 5s，引擎已停止');
-        //     engine.stop();
-        // }, 5000);
-
-
-
-        // ---------- 以下为业务代码 ----------
-
 
         // 工具栏按钮事件
         document.getElementById('btn-webgl').onclick = async () => {
@@ -422,19 +374,19 @@
         //
         updateComponentTree();
 
-        // 假设你有 addComponent/removeComponent 事件，可以这样监听并更新大纲
-        const origAdd = scene.addComponent.bind(scene);
-        scene.addComponent = function(comp) {
-            origAdd(comp);
-            updateModelTree();
-        };
-        const origRemove = scene.removeComponent?.bind(scene);
-        if (origRemove) {
-            scene.removeComponent = function(comp) {
-                origRemove(comp);
-                updateModelTree();
-            };
-        }
+        // // 假设你有 addComponent/removeComponent 事件，可以这样监听并更新大纲
+        // const origAdd = scene.addComponent.bind(scene);
+        // scene.addComponent = function(comp) {
+        //     origAdd(comp);
+        //     updateModelTree();
+        // };
+        // const origRemove = scene.removeComponent?.bind(scene);
+        // if (origRemove) {
+        //     scene.removeComponent = function(comp) {
+        //         origRemove(comp);
+        //         updateModelTree();
+        //     };
+        // }
     </script>
 </body>
 </html>

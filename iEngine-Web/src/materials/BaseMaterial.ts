@@ -1,6 +1,7 @@
 import { Material } from './Material';
 import { Color } from './Color';
 import { WebGLConstants } from '../renderers/webgl/WebGLConstants';
+import { Matrix4 } from '../math/Matrix4';
 
 import type { TextureInfo } from './Material';
 import type { WebGPUShaderModule } from '../renderers/webgpu/WebGPUShaderModule';
@@ -49,9 +50,9 @@ export class BaseMaterial extends Material {
         return defines;
     }
 
-    getUniforms(context: any, camera: any, model: any, lights: any) {
+    getUniforms(context: any, camera: any, component: any, lights: any) {
         return {
-            uModelViewMatrix: camera.getViewMatrix().multiply(model.transform),
+            uModelViewMatrix: camera.getViewMatrix().multiply(component.worldTransform),
             uProjectionMatrix: camera.getProjectionMatrix(),
             uBaseColor: this.color,
             // ...其它uniform

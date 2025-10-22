@@ -5,6 +5,9 @@ import { registerBuiltInShaders } from '../shaders/ShaderLib';
 import { registerBuiltInMaterials } from '../materials/MaterialManager';
 //
 import { Scene } from '../scenes/Scene';
+import { RenderSystem } from '../renderers/RenderSystem';
+import { SystemManager } from './SystemManager';
+import { Renderable } from '../renderers/Renderable';
 
 import { Renderer, RendererType } from '../renderers/Renderer';
 import type { WebGLContextOptions, WebGLContext } from '../renderers/webgl/WebGLContext';
@@ -32,6 +35,10 @@ export class Engine {
     private animationLoop: (() => void) | null = null;
     private isRunning: boolean = false;
     
+    // ECS系统管理
+    private systemManager: SystemManager;
+    private renderSystem: RenderSystem;
+    
     constructor(/*canvas: string | HTMLCanvasElement, */options: EngineOptions = {}) {
         // 使用解构并设置默认值
         // 默认使用WebGL2作为图形API进行渲染
@@ -58,7 +65,7 @@ export class Engine {
         // }
         
         this.webglRenderer = new WebGLRenderer(/*this.canvas, webGLOptions*/);
-        // 如果禁用 WebGPU，则将其设置为 null
+        // 如果禁用 Web GPU，则将其设置为 null
         this.webgpuRenderer = disableWebGPU ? null : new WebGPURenderer(/*this.canvas, webGPUOptions*/);
 
         // 
@@ -76,6 +83,12 @@ export class Engine {
         if (!this.activeRenderer) {
             throw new Error('No active renderer set');
         }
+        
+        // 初始化ECS系统
+        this.systemManager = new SystemManager();
+        this.renderSystem = new RenderSystem();
+        this.renderSystem.setRenderer(this.activeRenderer);
+        this.systemManager.addSystem(this.renderSystem);
         
         // 设置窗口调整事件
         window.addEventListener('resize', () => this.activeRenderer?.resize());
@@ -95,6 +108,9 @@ export class Engine {
         } else {
             await this.activeRenderer.init(this.activeScene.context as WebGPUContext);
         }
+        
+        // 更新渲染系统的场景
+        this.renderSystem.setScene(this.activeScene);
         
         return true;
     }
@@ -117,10 +133,14 @@ export class Engine {
         if (this.activeScene) {
             this.activeScene.update(deltaTime);
         }
+        
+        // 更新所有ECS系统
+        this.systemManager.update(deltaTime);
     }
 
     private _render(): void {
         if (this.activeScene && this.activeRenderer) {
+            // 直接调用渲染器的渲染方法，只传递场景
             this.activeRenderer.render(this.activeScene);
         }
     }
@@ -306,5 +326,15 @@ export class Engine {
         //         }
         //     }
         // }
+    }
+    
+    // 获取系统管理器
+    getSystemManager(): SystemManager {
+        return this.systemManager;
+    }
+    
+    // 获取渲染系统
+    getRenderSystem(): RenderSystem {
+        return this.renderSystem;
     }
 }

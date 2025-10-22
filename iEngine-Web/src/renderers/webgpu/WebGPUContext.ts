@@ -5,7 +5,6 @@ import {
     getWebGPUMinMagFilter
 } from '../../textures/TextureUtils';
 
-import type { Model } from '../../core/Model';
 import type { BufferDescriptor, WriteBufferDescriptor } from '../BufferDescriptor';
 import type { TextureDescriptor } from '../TextureDescriptor';
 
@@ -439,26 +438,26 @@ export class WebGPUContext extends Context {
     }
 
     // 绘制
-    draw(component: Model, passEncoder: GPURenderPassEncoder) {
-        // const vertexBuffer = model.vertexBuffer;
-        // const indexBuffer = model.indexBuffer;
+    // draw(component: Model, passEncoder: GPURenderPassEncoder) {
+    //     // const vertexBuffer = model.vertexBuffer;
+    //     // const indexBuffer = model.indexBuffer;
 
-        // if (vertexBuffer) {
-        //     passEncoder.setVertexBuffer(0, vertexBuffer as GPUBuffer);
-        // }
+    //     // if (vertexBuffer) {
+    //     //     passEncoder.setVertexBuffer(0, vertexBuffer as GPUBuffer);
+    //     // }
 
-        // if (indexBuffer) {
-        //     passEncoder.setIndexBuffer(indexBuffer as GPUBuffer, 'uint16');
-        // }
+    //     // if (indexBuffer) {
+    //     //     passEncoder.setIndexBuffer(indexBuffer as GPUBuffer, 'uint16');
+    //     // }
 
-        // // 绑定材质、着色器参数等...
-        // // passEncoder.setBindGroup(...)
+    //     // // 绑定材质、着色器参数等...
+    //     // // passEncoder.setBindGroup(...)
 
-        // if (model.drawIndexed && indexBuffer) {
-        //     passEncoder.drawIndexed(model.indexCount);
-        // } else {
-        //     passEncoder.draw(model.vertexCount);
-        // }
-    }
+    //     // if (model.drawIndexed && indexBuffer) {
+    //     //     passEncoder.drawIndexed(model.indexCount);
+    //     // } else {
+    //     //     passEncoder.draw(model.vertexCount);
+    //     // }
+    // }
     
 }

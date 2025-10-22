@@ -7,6 +7,8 @@ import { WebGPUContext } from './WebGPUContext';
 import { ShaderLib, BaseShaders, makeShaderVariantKey } from '../../shaders/ShaderLib';
 import { WebGPUUniforms } from './WebGPUUniforms';
 import { WebGPUShaderModule, createPipelineKey } from './WebGPUShaderModule';
+import { Light } from '../../lights/Light';
+import { Renderable } from '../Renderable';
 
 import type { GraphicsAPI } from '../Renderer';
 import type { WebGPUContextOptions } from './WebGPUContext'
@@ -245,23 +247,18 @@ export class WebGPURenderer extends Renderer {
             return;
         }
 
-        const components = scene.getComponents();
-        if (components.length === 0) {
+        // 从场景中收集所有可渲染对象
+        const renderables: Renderable[] = [];
+        scene.collectRenderables(renderables);
+
+        if (renderables.length === 0) {
             console.warn("No components to render in the scene");
             return;
         }
 
-        // if (!this.defaultSampler) {
-        //     console.error('Failed to create default Sampler.');
-        //     return;
-        // }
-        // if (!this.defaultTextureView) {
-        //     console.error('Failed to create default TextureView.');
-        //     return;
-        // }
-
-        // 获取光照
-        const lights = scene.getLights();
+        // 获取场景中的所有光照
+        const lights: Light[] = [];
+        scene.collectLights(lights);
 
         // 获取当前帧的纹理视图
         const device = this.gpuContext;
@@ -299,7 +296,7 @@ export class WebGPURenderer extends Renderer {
         });
 
         // 遍历可渲染的组件，开始渲染
-        for (const component of components) {
+        for (const component of renderables) {
             if (!component || !component.mesh) continue;
             if (!component.mesh.uploaded) {
                 // 你需要实现 mesh.upload for WebGPU
@@ -350,93 +347,6 @@ export class WebGPURenderer extends Renderer {
                 pipelineDesc
             );
 
-            // === 1. 组织 uniform 数据（相机、光照、材质等） ===
-            // const uniforms = component.material.getUniforms(
-            //     this.context, this.currentCamera, component, lights
-            // );
-            // // 你需要实现此函数，将对象转为 Float32Array，顺序要和 WGSL struct 匹配
-            // const uniformArray = uniformsToFloat32Array(uniforms);
-
-            // // === 2. 创建 uniform buffer ===
-            // const webgpuUniforms = new WebGPUUniforms(device);
-            // const uniformBuffer = webgpuUniforms.createUniformBuffer(uniformArray);
-
-            // // === 3. 创建 bind group layout 和 bind group ===
-            // const bindGroupEntries: GPUBindGroupEntry[] = [
-            //     { binding: 0, resource: { buffer: uniformBuffer } }
-            // ];
-
-            // // 贴图绑定（顺序要和 WGSL 保持一致）
-            // if (uniforms.uBaseColorMap) {
-            //     const { view, sampler } = this.context.getBindGroupTextureEntry(uniforms.uBaseColorMap);
-            //     bindGroupEntries.push(
-            //         { binding: 1, resource: view },
-            //         { binding: 2, resource: sampler }
-            //     );
-            // } else {
-            //     // 绑定默认贴图和采样器
-            //     bindGroupEntries.push(
-            //         { binding: 1, resource: this.defaultTextureView },
-            //         { binding: 2, resource: this.defaultSampler }
-            //     );
-            // }
-            // // metallicRoughnessMap
-            // if (uniforms.uMetallicRoughnessMap) {
-            //     const { view, sampler } = this.context.getBindGroupTextureEntry(uniforms.uMetallicRoughnessMap);
-            //     bindGroupEntries.push(
-            //         { binding: 3, resource: view },
-            //         { binding: 4, resource: sampler }
-            //     );
-            // } else {
-            //     bindGroupEntries.push(
-            //         { binding: 3, resource: this.defaultTextureView },
-            //         { binding: 4, resource: this.defaultSampler }
-            //     );
-            // }
-            // // normalMap
-            // if (uniforms.uNormalMap) {
-            //     const { view, sampler } = this.context.getBindGroupTextureEntry(uniforms.uNormalMap);
-            //     bindGroupEntries.push(
-            //         { binding: 5, resource: view },
-            //         { binding: 6, resource: sampler }
-            //     );
-            // } else {
-            //     bindGroupEntries.push(
-            //         { binding: 5, resource: this.defaultTextureView },
-            //         { binding: 6, resource: this.defaultSampler }
-            //     );
-            // }
-            // // aoMap
-            // if (uniforms.uAoMap) {
-            //     const { view, sampler } = this.context.getBindGroupTextureEntry(uniforms.uAoMap);
-            //     bindGroupEntries.push(
-            //         { binding: 7, resource: view },
-            //         { binding: 8, resource: sampler }
-            //     );
-            // } else {
-            //     bindGroupEntries.push(
-            //         { binding: 7, resource: this.defaultTextureView },
-            //         { binding: 8, resource: this.defaultSampler }
-            //     );
-            // }
-            // // emissiveMap
-            // if (uniforms.uEmissiveMap) {
-            //     const { view, sampler } = this.context.getBindGroupTextureEntry(uniforms.uEmissiveMap);
-            //     bindGroupEntries.push(
-            //         { binding: 9, resource: view },
-            //         { binding: 10, resource: sampler }
-            //     );
-            // } else {
-            //     bindGroupEntries.push(
-            //         { binding: 9, resource: this.defaultTextureView },
-            //         { binding: 10, resource: this.defaultSampler }
-            //     );
-            // }
-
-            // //
-            // const bindGroupLayout = pipeline.getBindGroupLayout(0);
-            // const bindGroup = webgpuUniforms.createBindGroup(bindGroupLayout, bindGroupEntries);
-
             // === xxxxxx ===
             const uniforms = component.material.getUniforms(
                 this.context, this.currentCamera, component, lights
@@ -444,53 +354,6 @@ export class WebGPURenderer extends Renderer {
 
             const textures = component.material.getTextures();
             (shader as WebGPUShaderModule).setTextures(textures);            
-            // const bindGroupLayoutEntryInfo = (shader as WebGPUShaderModule).getBindGroupLayoutEntryInfo();
-            // for (const name in bindGroupLayoutEntryInfo) {
-            //     const entry: GPUBindGroupLayoutEntry = bindGroupLayoutEntryInfo[name];
-            //     if (!entry) {
-            //        console.error('Failed to get the texture\'s binding');
-            //        continue;
-            //     }
-            //     if (entry.texture) {
-            //         if (textures.hasOwnProperty(name)) { // 确保只遍历对象自身的属性，而非原型链上的
-            //             const texture: Texture = textures[name];
-            //             if (texture.needsUpdate()) {
-            //                 texture.upload(this.context);
-            //                 texture.markUpdated();
-
-            //                 // const { view, sampler } = this.context.getBindGroupTextureEntry(texture);
-            //                 const view = this.context.getTextureView(texture);
-            //                 const sampler = this.context.getSampler(texture);
-            //                 (shader as WebGPUShaderModule).setTextures([
-            //                     {
-            //                         binding: entry.binding,
-            //                         textureView: view,
-            //                         sampler
-            //                     }
-            //                 ]);
-            //             }
-
-            //         } else {
-
-            //             // if (this.context.defaultTexture.needsUpdate()) {
-            //             //     this.context.defaultTexture.upload(this.context);
-            //             //     this.context.defaultTexture.markUpdated();
-
-            //             //     //
-            //             //     const view = this.context.getTextureView(this.context.defaultTexture);
-            //             //     const sampler = this.context.getSampler(this.context.defaultTexture);
-            //             //     shader.setTextures([
-            //             //         {
-            //             //             binding: entry.binding,
-            //             //             textureView: view,
-            //             //             sampler
-            //             //         }
-            //             //     ]);
-            //             // }
-            //             console.error('Failed to get the texture\'s binding');
-            //         }
-            //     }
-            // }
             shader.setUniforms(uniforms);   // 目前也包含了textures，因此，必须在shader.setTextures执行完，才能调用
             const bindGroup = (shader as WebGPUShaderModule).getBindGroup();
             
