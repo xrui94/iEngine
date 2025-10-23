@@ -1,6 +1,12 @@
 # iEngine-web
 iEngine for web(Test engine architecture). A tiny real-time graphics rendering engine based on webgl and webgpu.
 
+## 文档索引
+- 架构文档：../docs/engine-arch.md
+- 混合架构边界与约束：../docs/engine-arch.md#混合架构边界与约束
+- 核心概念与当前实现：../docs/engine-arch.md#核心概念与当前实现
+- RenderGraph 合流示意图：../docs/engine-arch.md#rendergraph-合流示意图
+
 ## Getting Start
 
 ### Install Dependencies

@@ -16,7 +16,7 @@ export class RenderSystem extends SystemECS {
     }
 
     update(world: WorldECS, _deltaTime: number): void {
-        const ids = world.query(['Transform', 'MeshECS', 'MaterialECS']);
+        const ids = world.queryMask({ all: ['Transform', 'MeshECS', 'MaterialECS'], none: ['Disabled', 'Hidden'] });
         const out: Renderable[] = [];
         for (const id of ids) {
             const t = world.getComponent<Transform>(id, 'Transform');
@@ -24,6 +24,8 @@ export class RenderSystem extends SystemECS {
             const mat = world.getComponent<MaterialECS>(id, 'MaterialECS');
             const layer = world.getComponent<RenderLayerECS>(id, 'RenderLayerECS');
             if (!t || !m || !mat) continue;
+            // 防御性过滤：丢弃无效网格或材质
+            if ((m as any).mesh == null || (mat as any).material == null) continue;
             out.push({
                 mesh: m.mesh,
                 material: mat.material,

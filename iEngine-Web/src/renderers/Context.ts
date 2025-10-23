@@ -11,7 +11,7 @@ import { TextureDescriptor } from './TextureDescriptor';
 
 
 export abstract class Context {
-    protected canvas!: HTMLCanvasElement;
+    protected _canvas!: HTMLCanvasElement;
 
     abstract get width(): number;
     abstract set width(value: number);
@@ -19,12 +19,19 @@ export abstract class Context {
     abstract get height(): number;
     abstract set height(value: number);
 
+    constructor(canvas: HTMLCanvasElement) {
+        this._canvas = canvas;
+        if (!(this._canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Canvas element is required for WebGLContext / WebGPUContext');
+        }
+    }
+
     /**
      * 获取显示尺寸的宽度，这是指 canvas 在浏览器中的实际显示宽度，相当于clientWidth
      * @returns
      */
     get displayWidth(): number {
-        return this.canvas.clientWidth;
+        return this._canvas.clientWidth;
     }
 
     /**
@@ -32,7 +39,7 @@ export abstract class Context {
      * @returns 
      */
     get displayHeight(): number {
-        return this.canvas.clientHeight;
+        return this._canvas.clientHeight;
     }
 
     abstract getDevice(): WebGLRenderingContext | GPUDevice;

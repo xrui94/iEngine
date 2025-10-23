@@ -12,6 +12,14 @@ export class OrbitControls extends BaseControls {
     private theta = 0;
     private phi = 0;
     private radius = 5;
+    // onChange 回调：当相机状态更新时触发
+    public onChange?: (state: {
+        position: Vector3;
+        target: Vector3;
+        radius: number;
+        theta: number;
+        phi: number;
+    }) => void;
 
     constructor(camera: PerspectiveCamera, domElement: HTMLElement) {
         super();
@@ -41,6 +49,18 @@ export class OrbitControls extends BaseControls {
         domElement.addEventListener('wheel', this.onMouseWheel, { passive: false });
     }
 
+    private emitChange() {
+        if (!this.onChange) return;
+        const pos = new Vector3(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        this.onChange({
+            position: pos,
+            target: new Vector3(this.target.x, this.target.y, this.target.z),
+            radius: this.radius,
+            theta: this.theta,
+            phi: this.phi,
+        });
+    }
+
     private onMouseDown = (e: MouseEvent) => {
         this.isDragging = true;
         this.lastX = e.clientX;
@@ -66,6 +86,8 @@ export class OrbitControls extends BaseControls {
         this.isDragging = false;
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mouseup', this.onMouseUp);
+        // 鼠标释放也触发一次变更通知
+        this.emitChange();
     };
 
     private onMouseWheel = (e: WheelEvent) => {
@@ -80,9 +102,24 @@ export class OrbitControls extends BaseControls {
         const z = this.target.z  + this.radius * Math.sin(this.phi) * Math.cos(this.theta);
         this.camera.setPosition(x, y, z);
         this.camera.lookAt(this.target.x, this.target.y, this.target.z);
+        // 每次更新相机时触发回调
+        this.emitChange();
     }
 
-    
+    // 可选：公开设置/获取目标方法，方便外部同步
+    setTarget(x: number, y: number, z: number) {
+        this.target.set(x, y, z);
+        this.updateCamera();
+    }
+
+    getTarget(): Vector3 {
+        return this.target;
+    }
+
+    getRadius(): number {
+        return this.radius;
+    }
+
     dispose() {
         this.domElement.removeEventListener('mousedown', this.onMouseDown);
         this.domElement.removeEventListener('wheel', this.onMouseWheel);

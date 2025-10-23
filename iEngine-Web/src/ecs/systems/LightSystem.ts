@@ -34,7 +34,7 @@ export class LightSystem extends SystemECS {
     }
 
     update(world: WorldECS, _deltaTime: number): void {
-        const ids = world.query(['Transform', 'LightECS']);
+        const ids = world.queryMask({ all: ['Transform', 'LightECS'], none: ['Disabled', 'Hidden'] });
         for (const id of ids) {
             const t = world.getComponent<Transform>(id, 'Transform');
             const le = world.getComponent<LightECS>(id, 'LightECS');

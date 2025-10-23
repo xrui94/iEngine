@@ -14,7 +14,6 @@ import type { Mesh } from '../../core/Mesh';
 import type { WebGLContextOptions } from './WebGLContext';
 
 export class WebGLRenderer extends Renderer {
-    private _canvas: HTMLCanvasElement = null!;
     private _context!: WebGLContext;
     private _clearColor: [number, number, number, number] = [0, 0, 0, 1];
     private _viewport: { x: number; y: number; width: number; height: number } | null = null;
@@ -37,16 +36,15 @@ export class WebGLRenderer extends Renderer {
     // 而是通过外部传入相机对象
     private currentCamera: Camera | null = null;
 
-    constructor(/*canvas: HTMLCanvasElement, options: WebGLContextOptions = {}*/) {
+    constructor(canvas: HTMLCanvasElement, options: WebGLContextOptions = {}) {
         super();
 
-        // // 确保传入的 canvas 元素存在
-        // if (!canvas) {
-        //     throw new Error('Canvas element is required for WebGLRenderer');
-        // }
+        // 
+        this._context = new WebGLContext(canvas, options);
 
-        // const useWebGL1 = options.useWebGL1 !== undefined ? options.useWebGL1 : false;
-        // this.graphicsApi = useWebGL1 ? 'webgl1' : 'webgl2';
+        //
+        const useWebGL1 = options.useWebGL1 !== undefined ? options.useWebGL1 : false;
+        this.graphicsApi = useWebGL1 ? 'webgl1' : 'webgl2';
 
         // this.context = new WebGLContext(canvas, {
         //     useWebGL1
@@ -55,13 +53,7 @@ export class WebGLRenderer extends Renderer {
         // this.resize();
     }
 
-    init(canvas: HTMLCanvasElement, options: WebGLContextOptions): void {
-        this._canvas = canvas;
-        this._context = new WebGLContext(canvas, options);
-        const useWebGL1 = options.useWebGL1;
-        this.graphicsApi = useWebGL1 ? 'webgl1' : 'webgl2';
-
-        //
+    init(): void {
         this._context.init();
         // this.initShaders();
         this.resize();

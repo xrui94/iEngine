@@ -29,36 +29,32 @@ export class WebGPUContext extends Context {
     private _samplerMap: WeakMap<Texture, GPUSampler> = new WeakMap();
 
     constructor(canvas: HTMLCanvasElement, options: WebGPUContextOptions = {}) {
-        super();
+        super(canvas);
 
-        // 确保传入的 canvas 元素存在
-        this.canvas = canvas;
-        if (!(this.canvas instanceof HTMLCanvasElement)) {
-            throw new Error('Canvas element is required for WebGLContext');
-        }
+        if (!navigator.gpu) throw new Error('WebGPU not supported');
 
         // this.init(options)
     }
 
     get width(): number {
-        return this.canvas.width;
+        return this._canvas.width;
     }
 
     set width(value: number) {
-        this.canvas.width = value;
+        this._canvas.width = value;
     }
 
     get height(): number {
-        return this.canvas.height;
+        return this._canvas.height;
     }
 
     set height(value: number) {
-        this.canvas.height = value;
+        this._canvas.height = value;
     }
 
     async init(options: WebGPUContextOptions = {}) {
         // 1. 获取 WebGPU 适配器和设备
-        if (!navigator.gpu) throw new Error('WebGPU not supported');
+        // if (!navigator.gpu) throw new Error('WebGPU not supported'); // 在构造函数中，就检查
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) throw new Error('No WebGPU adapter found');
 
@@ -67,7 +63,7 @@ export class WebGPUContext extends Context {
         this.queue = this.device.queue;
 
         // 3. 创建 WebGPU 上下文
-        this.context = this.canvas.getContext('webgpu') as GPUCanvasContext;
+        this.context = this._canvas.getContext('webgpu') as GPUCanvasContext;
         this.format = navigator.gpu.getPreferredCanvasFormat();
         this.configureSwapChain();
 

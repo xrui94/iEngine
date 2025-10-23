@@ -91,10 +91,10 @@ export class WebGPURenderer extends Renderer {
     private commandEncoder: GPUCommandEncoder | null = null;
     private renderPipelineCache: Map<string, GPURenderPipeline> = new Map();
 
-    constructor(/*canvas: HTMLCanvasElement, options: WebGPUContextOptions = {}*/) {
+    constructor(canvas: HTMLCanvasElement, options: WebGPUContextOptions = {}) {
         super();
 
-        // this.context = new WebGPUContext(canvas, options);
+        this._context = new WebGPUContext(canvas, options);
         // this.initShaders();
         // this.resize();
 
@@ -113,9 +113,7 @@ export class WebGPURenderer extends Renderer {
         return (this._context.getDevice()) as GPUDevice;
     }
 
-    async init(canvas: HTMLCanvasElement, options: WebGPUContextOptions) {
-        this._canvas = canvas;
-        this._context = new WebGPUContext(canvas, options);
+    async init() {
         await this._context.init();
 
         //

@@ -23,7 +23,7 @@ export class TransformSystem extends SystemECS {
     }
 
     update(world: WorldECS, _deltaTime: number): void {
-        const ids = world.query(['Transform']);
+        const ids = world.queryMask({ all: ['Transform'], none: ['Disabled', 'Hidden'] });
         for (const id of ids) {
             const t = world.getComponent<Transform>(id, 'Transform');
             if (!t || !t.dirty) continue;

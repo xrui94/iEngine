@@ -75,13 +75,12 @@
 
     // 注意：每个场景需要各自的实体实例；旧的跨场景复用已移除。
 
-    const frontRenderer = new iEngine.WebGLRenderer();
-    const topRenderer = new iEngine.WebGLRenderer();
-    const leftRenderer = new iEngine.WebGLRenderer();
-    const mainRenderer = new iEngine.WebGLRenderer();
+    const frontRenderer = new iEngine.WebGLRenderer(frontCanvas);
+    const topRenderer = new iEngine.WebGLRenderer(topCanvas);
+    const leftRenderer = new iEngine.WebGLRenderer(leftCanvas);
+    const mainRenderer = new iEngine.WebGLRenderer(mainCanvas);
 
     const frontView = new iEngine.RenderView({
-      canvas: frontCanvas,
       scene: frontScene,
       camera: frontCam,
       renderer: frontRenderer,
@@ -89,7 +88,6 @@
       clearColor: [0.1,0.1,0.1,1]
     });
     const topView   = new iEngine.RenderView({
-      canvas: topCanvas,
       scene: topScene,
       camera: topCam,
       renderer: topRenderer,
@@ -97,7 +95,6 @@
       clearColor: [0.1,0.1,0.1,1]
     });
     const leftView  = new iEngine.RenderView({
-      canvas: leftCanvas,
       scene: leftScene,
       camera: leftCam,
       renderer: leftRenderer,
@@ -105,7 +102,6 @@
       clearColor: [0.1,0.1,0.1,1]
     });
     const mainView  = new iEngine.RenderView({
-      canvas: mainCanvas,
       scene: mainScene,
       camera: mainCam,
       renderer: mainRenderer,

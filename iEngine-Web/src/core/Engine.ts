@@ -21,13 +21,13 @@ export type EngineOptions = {
 };
 
 export class Engine {
-    private _canvas: HTMLCanvasElement = null!;
-    private _webglOptions: WebGLContextOptions = {};
-    private _webgpuOptions: WebGPUContextOptions = {};
+    // private _canvas: HTMLCanvasElement = null!;
+    // private _webglOptions: WebGLContextOptions = {};
+    // private _webgpuOptions: WebGPUContextOptions = {};
 
     //
-    private webglRenderers: WebGLRenderer[] = [];
-    private webgpuRenderer: WebGPURenderer | null = null;
+    // private webglRenderers: WebGLRenderer[] = [];
+    // private webgpuRenderer: WebGPURenderer | null = null;
 
     //
     private resourcesRegistered: boolean = false; // 资源注册状态标记
@@ -37,7 +37,7 @@ export class Engine {
     private animationLoop: (() => void) | null = null;  // 动画循环回调函数
     private isRunning: boolean = false;
     
-    constructor(canvas: string | HTMLCanvasElement, options: EngineOptions = {}) {
+    constructor(/*canvas: string | HTMLCanvasElement, options: EngineOptions = {}*/) {
         // // 使用解构并设置默认值
         // // 默认使用WebGL2作为图形API进行渲染
         // const {
@@ -91,27 +91,6 @@ export class Engine {
         registerBuiltInMaterials();
         
         this.resourcesRegistered = true;
-    }
-
-    /**
-     * 创建渲染器
-     * @param rendererType 
-     * @returns 
-     */
-    createRenderer(rendererType: RendererType): Renderer {
-        if (!Renderer.isRendererType(rendererType)) {
-            throw new Error(`Invalid renderer type: ${rendererType}, it must be one of "webgl" or "webgpu"`);
-        }
-
-        if (rendererType === 'webgl') {
-            const webglRenderer = new WebGLRenderer();
-            this.webglRenderers.push(webglRenderer);
-            return webglRenderer;
-        } else {
-            const webgpuRenderer = new WebGPURenderer();
-            this.webgpuRenderer = webgpuRenderer;
-            return webgpuRenderer;
-        }
     }
 
     // private async _initRenderer(): Promise<boolean> {

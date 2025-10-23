@@ -33,7 +33,7 @@ import { SpotLight } from "./lights/SpotLight";
 
 import { WebGLRenderer } from "./renderers/webgl/WebGLRenderer";
 import { WebGPURenderer } from "./renderers/webgpu/WebGPURenderer";
-import { RenderView } from "./core/RenderView";
+import { RenderView } from "./renderers/RenderView";
 import { RenderLayerID } from "./renderers/RenderLayer";
 import { RenderableComponent } from "./renderers/RenderableComponent";
 

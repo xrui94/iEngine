@@ -2,6 +2,7 @@
 // Node 不包含任何渲染/更新逻辑，只提供 getWorldTransform()
 import { Matrix4, Vector3 } from '../math';
 import { Component } from './Component';
+
 import type { Scene } from '../scenes/Scene';
 
 export class Node {

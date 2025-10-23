@@ -38,50 +38,47 @@ export class WebGLContext extends Context {
     maxTextureUnits!: number;
 
     constructor(canvas: HTMLCanvasElement, options: WebGLContextOptions = {}) {
-        super();
+        super(canvas);
 
-        // 确保传入的 canvas 元素存在
-        this.canvas = canvas;
-        if (!(this.canvas instanceof HTMLCanvasElement)) {
-            throw new Error('Canvas element is required for WebGLContext');
-        }
-
+        //
         this.useWebGL1 = options.useWebGL1 ?? false;
+        if (this.useWebGL1) {
+            console.warn('Using WebGL 1.0 context, consider using WebGL 2.0 for better performance and features.');
+        }
 
         //
         // this.init(options);
     }
 
     get width(): number {
-        return this.canvas.width;
+        return this._canvas.width;
     }
 
     set width(value: number) {
-        this.canvas.width = value;
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this._canvas.width = value;
+        this.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
     }
 
     get height(): number {
-        return this.canvas.height;
+        return this._canvas.height;
     }
 
     set height(value: number) {
-        this.canvas.height = value;
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        this._canvas.height = value;
+        this.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
     }
 
     init() {
         if (this.useWebGL1) {
-            console.warn('Using WebGL 1.0 context, consider using WebGL 2.0 for better performance and features.');
             // 如果需要使用 WebGL 1.0，则强制获取 WebGL 1.0 上下文
-            this.gl = this.canvas.getContext('webgl') as WebGLRenderingContext;
+            this.gl = this._canvas.getContext('webgl') as WebGLRenderingContext;
             if (!this.gl) {
                 throw new Error('WebGL 1.0 not supported');
             }
         } else {
             // 尝试获取 WebGL 2.0 上下文
-            this.gl = this.canvas.getContext('webgl2') as WebGL2RenderingContext
-                || this.canvas.getContext('webgl') as WebGLRenderingContext;
+            this.gl = this._canvas.getContext('webgl2') as WebGL2RenderingContext
+                || this._canvas.getContext('webgl') as WebGLRenderingContext;
 
             if (this.gl instanceof WebGLRenderingContext) {
                 console.warn('WebGL 2.0 is not supported, replaced with WebGL 1.0!')
@@ -114,32 +111,35 @@ export class WebGLContext extends Context {
     }
 
     clear(): void {
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        const gl = this.gl;
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     }
 
-    clearViewport(viewport: { x: number; y: number; width: number; height: number }, clearColor?: [number, number, number, number]): void {
-        // 启用scissor test来限制清屏区域
-        this.gl.enable(this.gl.SCISSOR_TEST);
-        this.gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
-        
-        // 如果提供了清屏颜色，则设置它
-        if (clearColor) {
-            this.gl.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+    clearViewport(viewport: { x: number; y: number; width: number; height: number }, color?: [number, number, number, number]): void {
+        const gl = this.gl;
+        if (color) {
+            gl.clearColor(color[0], color[1], color[2], color[3]);
         }
-        
-        // 清屏
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-        
-        // 禁用scissor test
-        this.gl.disable(this.gl.SCISSOR_TEST);
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.disable(gl.SCISSOR_TEST);
     }
 
     resize(width: number, height: number): void {
-        if (this.canvas.width !== width || this.canvas.height !== height) {
-            this.canvas.width = width;
-            this.canvas.height = height;
+        // DPR-aware：根据显示尺寸与设备像素比设置绘制缓冲尺寸
+        const dpr = Math.max(1, Math.floor((window as any).devicePixelRatio || 1));
+        const drawWidth = Math.max(1, Math.floor(width * dpr));
+        const drawHeight = Math.max(1, Math.floor(height * dpr));
+        if (this._canvas.width !== drawWidth || this._canvas.height !== drawHeight) {
+            this._canvas.width = drawWidth;
+            this._canvas.height = drawHeight;
         }
-        this.gl.viewport(0, 0, width, height);
+        // 同步 CSS 尺寸，确保视觉大小与 clientWidth/clientHeight 对齐
+        this._canvas.style.width = `${width}px`;
+        this._canvas.style.height = `${height}px`;
+        this.gl.viewport(0, 0, this._canvas.width, this._canvas.height);
     }
 
     // 可添加 buffer 绑定等方法

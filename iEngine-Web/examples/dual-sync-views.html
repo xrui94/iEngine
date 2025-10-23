@@ -71,11 +71,23 @@
     rightScene.addEntity(createWireCube());
     rightScene.addEntity(createCube([0.2,0.4,1.0]));
 
-    const leftRenderer = new iEngine.WebGLRenderer();
-    const rightRenderer = new iEngine.WebGLRenderer();
+    const leftRenderer = new iEngine.WebGLRenderer(leftCanvas);
+    const rightRenderer = new iEngine.WebGLRenderer(rightCanvas);
 
-    const leftView = new iEngine.RenderView({ canvas: leftCanvas, scene: leftScene, camera: leftCam, renderer: leftRenderer, viewport: { x:0,y:0,width:leftCanvas.clientWidth, height:leftCanvas.clientHeight }, clearColor: [0.1,0.1,0.1,1] });
-    const rightView = new iEngine.RenderView({ canvas: rightCanvas, scene: rightScene, camera: rightCam, renderer: rightRenderer, viewport: { x:0,y:0,width:rightCanvas.clientWidth, height:rightCanvas.clientHeight }, clearColor: [0.12,0.12,0.18,1] });
+    const leftView = new iEngine.RenderView({
+      scene: leftScene,
+      camera: leftCam, 
+      renderer: leftRenderer,
+      viewport: { x:0,y:0,width:leftCanvas.clientWidth, height:leftCanvas.clientHeight },
+      clearColor: [0.1,0.1,0.1,1]
+    });
+    const rightView = new iEngine.RenderView({
+      scene: rightScene,
+      camera: rightCam, 
+      renderer: rightRenderer,
+      viewport: { x:0,y:0,width:rightCanvas.clientWidth, height:rightCanvas.clientHeight },
+      clearColor: [0.12,0.12,0.18,1]
+    });
 
     await leftView.init();
     await rightView.init();

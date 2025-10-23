@@ -33,8 +33,14 @@
       tri.addComponent(new iEngine.RenderableComponent(triMesh, triMat, iEngine.RenderLayerID.Opaque));
       scene.addEntity(tri);
 
-      const renderer = new iEngine.WebGLRenderer();
-      const view = new iEngine.RenderView({ canvas, scene, camera: cam, renderer, viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight }, clearColor: [0.1,0.1,0.1,1] });
+      const renderer = new iEngine.WebGLRenderer(canvas);
+      const view = new iEngine.RenderView({
+        scene,
+        camera: cam,
+        renderer,
+        viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight },
+        clearColor: [0.1,0.1,0.1,1]
+      });
       return { scene, cam, renderer, view, controls: new iEngine.OrbitControls(cam, canvas) };
     }
 
@@ -62,8 +68,14 @@
       wire.addComponent(new iEngine.RenderableComponent(wireMesh, mat, iEngine.RenderLayerID.Opaque));
       scene.addEntity(wire);
 
-      const renderer = new iEngine.WebGLRenderer();
-      const view = new iEngine.RenderView({ canvas, scene, camera: cam, renderer, viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight }, clearColor: [0.12,0.12,0.18,1] });
+      const renderer = new iEngine.WebGLRenderer(canvas);
+      const view = new iEngine.RenderView({
+        scene,
+        camera: cam,
+        renderer,
+        viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight },
+        clearColor: [0.12,0.12,0.18,1]
+      });
       return { scene, cam, renderer, view, controls: new iEngine.OrbitControls(cam, canvas) };
     }
 

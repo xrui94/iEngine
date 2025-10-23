@@ -1,44 +1,35 @@
 // render/RenderView.ts
 
-import type { Renderer } from '../renderers/Renderer';
+import type { Renderer } from './Renderer';
 import type { Scene } from '../scenes/Scene';
-import type { WebGLContextOptions } from '../renderers/webgl/WebGLContext';
-import type { WebGPUContextOptions } from '../renderers/webgpu/WebGPUContext';
 
-import { WebGLRenderer } from '../renderers/webgl/WebGLRenderer';
-import { WebGPURenderer } from '../renderers/webgpu/WebGPURenderer';
+import { WebGLRenderer } from './webgl/WebGLRenderer';
+import { WebGPURenderer } from './webgpu/WebGPURenderer';
+import { RenderGraph } from './pipeline/RenderGraph';
+import { ForwardPass } from './pipeline/passes/ForwardPass';
+import { PostProcessPass } from './pipeline/passes/PostProcessPass';
 
 export interface RenderViewOptions {
-    canvas: HTMLCanvasElement;
-    backend?: 'webgl' | 'webgpu';
-    webgl?: WebGLContextOptions;
-    webgpu?: WebGPUContextOptions;
     scene: Scene;
     renderer: Renderer;
     viewport?: { x: number; y: number; width: number; height: number };
     autoResize?: boolean;
     clearColor?: [number, number, number, number];
+    renderGraph?: RenderGraph; // 新增：渲染图
 }
 
 export class RenderView {
-    public readonly canvas: HTMLCanvasElement;
     public readonly scene: Scene;
     public readonly renderer: Renderer;
     public readonly viewport?: { x: number; y: number; width: number; height: number };
     public readonly autoResize: boolean;
     public readonly clearColor?: [number, number, number, number];
+    public readonly renderGraph: RenderGraph;
 
     private _initialized: boolean = false;
     private _resizeHandler: (() => void) | null = null;
 
     constructor(options: RenderViewOptions) {
-         // 获取 canvas 元素 
-        if (!(options.canvas instanceof HTMLCanvasElement)) {
-            throw new Error('Invalid canvas element');
-        }
-
-        this.canvas = options.canvas;
-
         // if (options.backend !== 'webgl' && options.backend !== 'webgpu') {
         //     throw new Error('Invalid backend specified');
         // }
@@ -51,6 +42,15 @@ export class RenderView {
 
         this.autoResize = options.autoResize ?? true;
         this.clearColor = options.clearColor;
+        // 初始化渲染图（如果未传入则构建默认图：Forward + PostProcess）
+        this.renderGraph = options.renderGraph ?? this._createDefaultGraph();
+    }
+
+    private _createDefaultGraph(): RenderGraph {
+        const graph = new RenderGraph();
+        graph.addPass(new ForwardPass());
+        graph.addPass(new PostProcessPass());
+        return graph;
     }
 
     async init(): Promise<void> {
@@ -58,9 +58,9 @@ export class RenderView {
 
         // 区分初始化参数
         if (this.renderer instanceof WebGLRenderer) {
-            await Promise.resolve(this.renderer.init(this.canvas, { useWebGL1: false }));
+            await Promise.resolve(this.renderer.init());
         } else if (this.renderer instanceof WebGPURenderer) {
-            await this.renderer.init(this.canvas, {});
+            await this.renderer.init();
         } else {
             throw new Error('Unsupported renderer type');
         }
@@ -88,8 +88,6 @@ export class RenderView {
     render(deltaTime?: number, options?: { clearCanvas?: boolean }): void {
         if (!this._initialized) return;
 
-        // this.renderer.resize();
-
         // 每帧应用视口，避免resize或其他状态重置
         if (this.viewport) {
             this.renderer.setViewport(this.viewport);
@@ -103,7 +101,12 @@ export class RenderView {
         }
 
         this.scene.update(deltaTime || 0);
-        this.renderer.render(this.scene, options);
+        // 使用渲染图执行渲染流程（替代直接 renderer.render）
+        if (this.renderGraph) {
+            this.renderGraph.execute(this.renderer, this.scene);
+        } else {
+            this.renderer.render(this.scene, options);
+        }
     }
 
     isInitialized(): boolean {
