@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>鹰眼小地图示例</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { background: #222; }
+    #glCanvas { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; display: block; }
+    .title { position: absolute; left: 0; top: 0; width: 100%; height: 40px; background: rgba(40,40,40,.7); color: #fff; display:flex; align-items:center; justify-content:center; }
+  </style>
+</head>
+<body>
+  <div class="title">鹰眼小地图：主视图 + 放大近景小地图（相机同步）</div>
+  <canvas id="glCanvas"></canvas>
+  <script type="module">
+    import iEngine from '../dist/iengine.js'
+
+    // 基础实体构造
+    function createTriangleEntity() {
+      const triangle = new iEngine.Node('Triangle');
+      const mesh = new iEngine.Mesh(
+        new iEngine.Triangle(),
+        new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES)
+      );
+      const mat = new iEngine.BaseMaterial({ shaderName: 'base_material' });
+      mat.setColor(1.0, 0.0, 0.0);
+      const comp = new iEngine.RenderableComponent(mesh, mat, iEngine.RenderLayerID.Opaque);
+      triangle.addComponent(comp);
+      return triangle;
+    }
+    function createCubeEntity() {
+      const cube = new iEngine.Node('Cube');
+      const mesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const pbr = new iEngine.PbrMaterial({
+        baseColor: new iEngine.Color(0.8, 0.8, 0.8),
+      });
+      const comp = new iEngine.RenderableComponent(mesh, pbr, iEngine.RenderLayerID.Opaque);
+      cube.addComponent(comp);
+      return cube;
+    }
+    function createWireframeCubeEntity() {
+      const wire = new iEngine.Node('WireCube');
+      const mesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.LINES));
+      const mat = new iEngine.BaseMaterial({ shaderName: 'base_material' });
+      mat.setColor(1.0, 1.0, 0.0);
+      const comp = new iEngine.RenderableComponent(mesh, mat, iEngine.RenderLayerID.Opaque);
+      wire.addComponent(comp);
+      return wire;
+    }
+
+    const canvas = document.getElementById('glCanvas');
+    const scene = new iEngine.Scene();
+    const minimapScene = new iEngine.Scene();
+
+    // 主相机和小地图相机（同步但距离更近）
+    const mainCam = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
+    mainCam.setPosition(0, 0, 6);
+    mainCam.lookAt(0, 0, 0);
+    scene.activeCamera = mainCam;
+
+    const miniCam = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
+    miniCam.setPosition(0, 0, 2.2); // 近一些
+    miniCam.lookAt(0, 0, 0);
+    minimapScene.activeCamera = miniCam;
+
+    // 控制器绑定主相机
+    const controls = new iEngine.OrbitControls(mainCam, canvas);
+
+    // 灯光
+    const ambient = new iEngine.AmbientLight({ color: new iEngine.Color(0.3, 0.3, 0.3) });
+    const ambientEntity = new iEngine.Node('Ambient');
+    ambientEntity.addComponent(new iEngine.LightComponent(ambient));
+    scene.addEntity(ambientEntity);
+    minimapScene.addEntity(ambientEntity);
+
+    const dir = new iEngine.DirectionalLight({ color: new iEngine.Color(1,1,1), intensity: 5 });
+    const dirEntity = new iEngine.Node('Dir');
+    dirEntity.addComponent(new iEngine.LightComponent(dir));
+    scene.addEntity(dirEntity);
+    minimapScene.addEntity(dirEntity);
+
+    // 模型
+    const tri = createTriangleEntity();
+    const cube = createCubeEntity();
+    const wireCube = createWireframeCubeEntity();
+    scene.addEntity(tri);
+    scene.addEntity(cube);
+    minimapScene.addEntity(cube);
+    minimapScene.addEntity(wireCube);
+
+    // 共享渲染器 + 两个视图
+    const renderer = new iEngine.WebGLRenderer();
+    const mainView = new iEngine.RenderView({
+      canvas,
+      scene,
+      camera: mainCam,
+      renderer,
+      viewport: { x: 0, y: 0, width: canvas.clientWidth, height: canvas.clientHeight },
+      clearColor: [0.1, 0.1, 0.1, 1]
+    });
+    const minimapView = new iEngine.RenderView({
+      canvas,
+      scene: minimapScene,
+      camera: miniCam,
+      renderer,
+      viewport: { x: canvas.clientWidth - 220, y: canvas.clientHeight - 170, width: 200, height: 150 },
+      clearColor: [0.12, 0.12, 0.18, 1]
+    });
+
+    await mainView.init();
+    await minimapView.init();
+
+    // 同步：让小地图相机每帧跟随主相机的朝向/目标，但距离缩放
+    function syncMiniCam() {
+      const target = mainCam.getTarget ? mainCam.getTarget() : { x: 0, y: 0, z: 0 };
+      const pos = mainCam.position;
+      const dirx = pos.x - target.x, diry = pos.y - target.y, dirz = pos.z - target.z;
+      const scale = 0.4; // 距离缩放到更近
+      miniCam.setPosition(target.x + dirx * scale, target.y + diry * scale, target.z + dirz * scale);
+      miniCam.lookAt(target.x, target.y, target.z);
+    }
+
+    const engine = new iEngine.Engine();
+    engine.setAnimationLoop(() => {
+      syncMiniCam();
+      mainView.render();
+      minimapView.render();
+    });
+  </script>
+</body>
+</html>

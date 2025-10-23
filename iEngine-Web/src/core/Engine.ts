@@ -5,116 +5,80 @@ import { registerBuiltInShaders } from '../shaders/ShaderLib';
 import { registerBuiltInMaterials } from '../materials/MaterialManager';
 //
 import { Scene } from '../scenes/Scene';
-import { RenderSystem } from '../renderers/RenderSystem';
-import { SystemManager } from './SystemManager';
-import { Renderable } from '../renderers/Renderable';
-
 import { Renderer, RendererType } from '../renderers/Renderer';
-import type { WebGLContextOptions, WebGLContext } from '../renderers/webgl/WebGLContext';
-import type { WebGPUContextOptions, WebGPUContext } from '../renderers/webgpu/WebGPUContext';
+
+import type { WebGLContextOptions } from '../renderers/webgl/WebGLContext';
+import type { WebGPUContextOptions } from '../renderers/webgpu/WebGPUContext';
+
+
 
 export type EngineOptions = {
     renderer?: RendererType; // 默认使用 WebGL 渲染器
     // useWebGPU?: boolean; // 是否使用 WebGPU 渲染器
     disableWebGPU?: boolean; // 是否禁用 WebGPU 支持
-    // webGLOptions?: WebGLContextOptions;
-    // webGPUOptions?: WebGPUContextOptions
+    webGLOptions?: WebGLContextOptions;
+    webGPUOptions?: WebGPUContextOptions
 };
 
 export class Engine {
-    // private canvas: HTMLCanvasElement | null = null;
-    private activeRenderer: WebGLRenderer | WebGPURenderer | null = null;
-    private webglRenderer: WebGLRenderer;
+    private _canvas: HTMLCanvasElement = null!;
+    private _webglOptions: WebGLContextOptions = {};
+    private _webgpuOptions: WebGPUContextOptions = {};
+
+    //
+    private webglRenderers: WebGLRenderer[] = [];
     private webgpuRenderer: WebGPURenderer | null = null;
-    private scenes: Map<string, Scene> = new Map();
-    private activeScene: Scene | null = null;
+
+    //
     private resourcesRegistered: boolean = false; // 资源注册状态标记
     private isReady: boolean = false; // 引擎是否已准备就绪
     private animationFrameId: number = 0;
     private lastTime: number = performance.now();
-    private animationLoop: (() => void) | null = null;
+    private animationLoop: (() => void) | null = null;  // 动画循环回调函数
     private isRunning: boolean = false;
     
-    // ECS系统管理
-    private systemManager: SystemManager;
-    private renderSystem: RenderSystem;
-    
-    constructor(/*canvas: string | HTMLCanvasElement, */options: EngineOptions = {}) {
-        // 使用解构并设置默认值
-        // 默认使用WebGL2作为图形API进行渲染
-        const {
-            renderer = options.renderer ?? 'webgl',
-            // webGLOptions = options.webGLOptions || {},
-            // webGPUOptions = options.webGPUOptions || {},
-            disableWebGPU = false
-        } = options;
-        if (!Renderer.isRendererType(renderer)) {
-            throw new Error(`Invalid renderer type: ${renderer}, it must be one of "webgl" or "webgpu"`);
-        }
+    constructor(canvas: string | HTMLCanvasElement, options: EngineOptions = {}) {
+        // // 使用解构并设置默认值
+        // // 默认使用WebGL2作为图形API进行渲染
+        // const {
+        //     renderer = options.renderer ?? 'webgl',
+        //     webGLOptions = options.webGLOptions || {},
+        //     webGPUOptions = options.webGPUOptions || {},
+        //     disableWebGPU = false
+        // } = options;
+        // this._webglOptions = webGLOptions;
+        // this._webgpuOptions = webGPUOptions;
 
-        // 获取 canvas 元素
-        // if (canvas instanceof HTMLCanvasElement) {
-        //     this.canvas = canvas;
-        // } else if (typeof canvas === 'string') {
-        //     // 如果传入的是字符串，则尝试获取对应的 canvas 元素
-        //     this.canvas = document.getElementById(canvas) as HTMLCanvasElement;
+        // // 获取 canvas 元素 
+        // if (!(canvas instanceof HTMLCanvasElement) && typeof canvas === 'string') {
+        //     const htmlElement = document.getElementById(canvas);
+        //     if (htmlElement instanceof HTMLCanvasElement) {
+        //         this._canvas = htmlElement;
+        //     } else {
+        //         throw new Error('Canvas element not found');
+        //     }
+        // } else {
+        //     this._canvas = canvas;
         // }
-        // 确保 canvas 元素存在
-        // if (!this.canvas) {
-        //     throw new Error('Canvas element not found');
+
+        // if (!Renderer.isRendererType(renderer)) {
+        //     throw new Error(`Invalid renderer type: ${renderer}, it must be one of "webgl" or "webgpu"`);
         // }
-        
-        this.webglRenderer = new WebGLRenderer(/*this.canvas, webGLOptions*/);
-        // 如果禁用 Web GPU，则将其设置为 null
-        this.webgpuRenderer = disableWebGPU ? null : new WebGPURenderer(/*this.canvas, webGPUOptions*/);
 
-        // 
-        if (renderer === 'webgl') {
-            this.activeRenderer = this.webglRenderer;
-        } else if (renderer === 'webgpu') {
-            if (disableWebGPU) {
-                throw new Error('WebGPU is disabled, cannot use WebGPU renderer');
-            }
-            this.activeRenderer = this.webgpuRenderer;
-        } else {
-            throw new Error(`Unsupported renderer type: ${renderer}`);
-        }
+        // 初始化渲染器
+        // this.webglRenderers.push(new WebGLRenderer());
+        // this.webgpuRenderer = new WebGPURenderer();
 
-        if (!this.activeRenderer) {
-            throw new Error('No active renderer set');
-        }
-        
-        // 初始化ECS系统
-        this.systemManager = new SystemManager();
-        this.renderSystem = new RenderSystem();
-        this.renderSystem.setRenderer(this.activeRenderer);
-        this.systemManager.addSystem(this.renderSystem);
-        
+        this._registerResources();
+
         // 设置窗口调整事件
-        window.addEventListener('resize', () => this.activeRenderer?.resize());
+        // window.addEventListener('resize', () => this.activeRenderer?.resize());
     }
 
-    private async _initRenderer(): Promise<boolean> {
-        if (!this.activeRenderer) {
-            throw new Error('No active renderer set');
-        }
-
-        if (!this.activeScene) {
-            return false;
-        }
-
-        if (this.activeRenderer instanceof WebGLRenderer) {
-            this.activeRenderer.init(this.activeScene.context as WebGLContext);
-        } else {
-            await this.activeRenderer.init(this.activeScene.context as WebGPUContext);
-        }
-        
-        // 更新渲染系统的场景
-        this.renderSystem.setScene(this.activeScene);
-        
-        return true;
-    }
-
+    /**
+     * 注册引擎内置的基础资源（一次性）
+     * @returns 
+     */
     private _registerResources(): void {
         if (this.resourcesRegistered) {
             return; // 避免重复注册
@@ -128,22 +92,45 @@ export class Engine {
         
         this.resourcesRegistered = true;
     }
-    
-    private _update(deltaTime: number): void {
-        if (this.activeScene) {
-            this.activeScene.update(deltaTime);
+
+    /**
+     * 创建渲染器
+     * @param rendererType 
+     * @returns 
+     */
+    createRenderer(rendererType: RendererType): Renderer {
+        if (!Renderer.isRendererType(rendererType)) {
+            throw new Error(`Invalid renderer type: ${rendererType}, it must be one of "webgl" or "webgpu"`);
         }
-        
-        // 更新所有ECS系统
-        this.systemManager.update(deltaTime);
+
+        if (rendererType === 'webgl') {
+            const webglRenderer = new WebGLRenderer();
+            this.webglRenderers.push(webglRenderer);
+            return webglRenderer;
+        } else {
+            const webgpuRenderer = new WebGPURenderer();
+            this.webgpuRenderer = webgpuRenderer;
+            return webgpuRenderer;
+        }
     }
 
-    private _render(): void {
-        if (this.activeScene && this.activeRenderer) {
-            // 直接调用渲染器的渲染方法，只传递场景
-            this.activeRenderer.render(this.activeScene);
-        }
-    }
+    // private async _initRenderer(): Promise<boolean> {
+    //     if (!this.activeRenderer) {
+    //         throw new Error('No active renderer set');
+    //     }
+
+    //     if (!this.activeScene) {
+    //         return false;
+    //     }
+
+    //     if (this.activeRenderer instanceof WebGLRenderer) {
+    //         this.activeRenderer.init(this._canvas, this._webglOptions);
+    //     } else {
+    //         await this.activeRenderer.init(this._canvas, this._webgpuOptions);
+    //     }
+        
+    //     return true;
+    // }
 
     private _runAnimationLoop = () => {
         if (this.animationLoop && this.isRunning) {
@@ -175,166 +162,4 @@ export class Engine {
         }
     }
 
-     // 主循环函数
-    // 使用 requestAnimationFrame 来实现高效的渲染循环
-    tick(): void {
-        // 检查引擎是否已准备就绪
-        if (!this.isReady) {
-            throw new Error('Engine is not ready. Please call start() before tick().');
-        }
-
-        // 如果没有活动场景或渲染器未初始化，静默返回
-        if (!this.activeScene || !this.activeRenderer?.isInitialized()) {
-            // throw new Error('No active scene or renderer is not initialized');
-            // 如果没有活动场景或渲染器未初始化，静默返回而不是抛出异常!!!
-            return;
-        }
-
-        //
-        const now = performance.now();
-        const deltaTime = (now - this.lastTime) / 1000;
-        this.lastTime = now;
-
-        // 1. 更新动画、和其它逻辑
-        this._update(deltaTime);
-
-        // 2. 渲染
-        this._render();
-    }
-    
-    /**
-     * 初始化引擎
-     * 注意：此方法不启动渲染循环，需调用 setAnimationLoop 来控制渲染
-     * 渲染器初始化将在设置活动场景时自动完成
-     */
-    start() {
-        // const rendererInitialized = await this._initRenderer();
-
-        // // 只有在渲染器初始化成功时才注册资源
-        // if (rendererInitialized) {
-        //     // 注册内置 Shader
-        //     registerBuiltInShaders();
-
-        //     // 注册内置材质
-        //     registerBuiltInMaterials();
-
-        //     // 初始化所有材质的 Shader（可选缓存）
-        //     // MaterialManager.warmUpShaders(this.renderer.backend);
-        // }
-
-        // 注册内置资源（如果尚未注册）
-        // this._registerResources();
-
-        // 注册内置资源（如果尚未注册）
-        this._registerResources();
-
-        // 标记引擎已准备就绪
-        this.isReady = true;
-        
-        // 如果已有活动场景，则初始化渲染器
-        // if (this.activeScene) {
-        //     // 异步初始化在后台进行，不阻塞用户代码
-        //     this._initRenderer().then(success => {
-        //         if (!success) {
-        //             console.warn('Failed to initialize renderer');
-        //         }
-        //     }).catch(error => {
-        //         console.warn('Error initializing renderer:', error);
-        //     });
-        // }
-        // 如果没有活动场景，渲染器将在 addScene 或 setActiveScene 时，
-        // 尝试再次通过 start 方法来启动引擎，以初始化
-    }
-    
-    stop(): void {
-        this.setAnimationLoop(null); // 复用现有逻辑
-    }
-
-    getScene(name: string): Scene | undefined {
-        return this.scenes.get(name);
-    }
-
-    addScene(name: string, scene: Scene): void {
-        this.scenes.set(name, scene);
-        if (!this.activeScene) {
-            this.setActiveScene(name);
-        }
-    }
-
-    setActiveScene(name: string): void {
-        const scene = this.scenes.get(name);
-        if (scene) {
-            // scene.renderer = this.activeRenderer; // 设置渲染器
-            scene.context = this.activeRenderer instanceof WebGLRenderer ? 'webgl' : 'webgpu';
-            this.activeScene = scene;
-
-            // 如果渲染器尚未初始化（因为之前没有场景），则在此处初始化
-            if (this.activeRenderer && !this.activeRenderer.isInitialized()) {
-                // 异步初始化在后台进行，不阻塞用户代码
-                this._initRenderer().then(success => {
-                    // if (success) {
-                    //     this._registerResources();
-                    // }
-                    if (!success) {
-                        console.error('Failed to initialize renderer');
-                    }
-                }).catch(error => {
-                    console.error('Error initializing renderer:', error);
-                });
-            }
-        } else {
-            throw new Error(`Scene "${name}" not found`);
-        }
-    }
-    
-    /*async */setRenderer(renderer: RendererType)/*: Promise<void>*/ {
-        if (!this.activeScene) {
-            throw new Error('No active scene set');
-        }
-
-        if (!this.activeRenderer) {
-            throw new Error('No active renderer set');
-        }
-
-        if (renderer === 'webgl') {
-            this.activeRenderer = this.webglRenderer;
-            this.activeScene.context = 'webgl';
-        } else if (renderer === 'webgpu') {
-            this.activeRenderer = this.webgpuRenderer;
-            this.activeScene.context = 'webgpu';
-        }
-
-        // await this._initRenderer();
-        // 异步初始化在后台进行，不阻塞用户代码
-        this._initRenderer().then(success => {
-            // if (success) {
-            //     this._registerResources();
-            // }
-            if (!success) {
-                console.error('Failed to initialize renderer');
-            }
-        }).catch(error => {
-            console.error('Error initializing renderer:', error);
-        });
-
-        // if (this.activeScene) {
-        //     this.activeScene.renderer = this.activeRenderer;
-        //     // 关键：重置所有 mesh 的 uploaded 标记
-        //     for (const comp of this.activeScene.getComponents()) {
-        //         if (comp.mesh) {
-        //             comp.mesh.uploaded = false;
-        //         }
-        //     }
-        // }
-    }
-    
-    // 获取系统管理器
-    getSystemManager(): SystemManager {
-        return this.systemManager;
-    }
-    
-    // 获取渲染系统
-    getRenderSystem(): RenderSystem {
-        return this.renderSystem;
-    }
 }

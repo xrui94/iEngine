@@ -71,7 +71,11 @@ function uniformsToFloat32Array(uniforms: Record<string, any>): Float32Array {
 }
 
 export class WebGPURenderer extends Renderer {
-    private context!: WebGPUContext;
+    private static instanceCount = 0;
+    private _canvas: HTMLCanvasElement = null!;
+    private _context!: WebGPUContext;
+    private _clearColor: [number, number, number, number] = [0.1, 0.1, 0.1, 1];
+    private _viewport: { x: number; y: number; width: number; height: number } | null = null;
     private graphicsApi: GraphicsAPI = 'webgpu';
     private shaders: Map<string, WebGPUShaderModule> = new Map();
     private _isInitialized: boolean = false;
@@ -93,16 +97,28 @@ export class WebGPURenderer extends Renderer {
         // this.context = new WebGPUContext(canvas, options);
         // this.initShaders();
         // this.resize();
+
+        WebGPURenderer.instanceCount++;
+        if (WebGPURenderer.instanceCount > 1) {
+            console.warn(
+                'Multiple WebGPURenderer instances detected. ' +
+                'This is usually unnecessary and may impact performance. ' +
+                'Consider reusing a single instance.'
+            );
+        }
     }
 
     // 提供gpu上下文的访问器
     get gpuContext(): GPUDevice {
-        return (this.context.getDevice()) as GPUDevice;
+        return (this._context.getDevice()) as GPUDevice;
     }
 
-    async init(context: WebGPUContext) {
-        this.context = context;
-        await this.context.init();
+    async init(canvas: HTMLCanvasElement, options: WebGPUContextOptions) {
+        this._canvas = canvas;
+        this._context = new WebGPUContext(canvas, options);
+        await this._context.init();
+
+        //
         // this.initShaders();
         this.device = this.gpuContext;
         this.resize();
@@ -225,106 +241,105 @@ export class WebGPURenderer extends Renderer {
         return pipeline ?? null;
     }
 
-    clear(): void {
-        this.context.clear();
-    }
-
-    resize(): void {
-        const displayWidth = this.context.displayWidth;
-        const displayHeight = this.context.displayHeight;
-        this.context.resize(displayWidth, displayHeight);
-        
-        // 更新相机宽高比（如果是透视相机）
-        if (this.currentCamera instanceof PerspectiveCamera) {
-            this.currentCamera.setAspect(this.context.width / this.context.height);
+    setClearColor(color?: [number, number, number, number]): void {
+        if (color) {
+            this._clearColor = color;
         }
     }
 
-    async render(scene: Scene): Promise<void> {
+    setViewport(viewport?: { x: number; y: number; width: number; height: number }): void {
+        this._viewport = viewport ?? null;
+    }
+
+    clear(): void {
+        this._context.clear();
+    }
+
+    resize(): void {
+        const displayWidth = this._context.displayWidth;
+        const displayHeight = this._context.displayHeight;
+        this._context.resize(displayWidth, displayHeight);
+        
+        // 更新相机宽高比（如果是透视相机）
+        if (this.currentCamera instanceof PerspectiveCamera) {
+            this.currentCamera.setAspect(this._context.width / this._context.height);
+        }
+    }
+
+    async render(scene: Scene, options?: { clearCanvas?: boolean }): Promise<void> {
         this.currentCamera = scene.activeCamera;
         if (!this.currentCamera) {
             console.error("No active camera set for rendering");
             return;
         }
 
-        // 从场景中收集所有可渲染对象
-        const renderables: Renderable[] = [];
-        scene.collectRenderables(renderables);
+        // 使用基类统一聚合（去重）
+        const final = this.aggregateRenderables(scene);
 
-        if (renderables.length === 0) {
+        // 检查是否有可渲染对象
+        if (final.length === 0) {
             console.warn("No components to render in the scene");
             return;
         }
 
-        // 获取场景中的所有光照
-        const lights: Light[] = [];
-        scene.collectLights(lights);
-
-        // 获取当前帧的纹理视图
-        const device = this.gpuContext;
-        const textureView = this.context.getCurrentTextureView();
+        // 使用基类统一聚合光源（去重）
+        const finalLights = this.aggregateLights(scene);
 
         // 创建深度纹理（可缓存）
+
+        const device = this.gpuContext;
+        const textureView = this._context.getCurrentTextureView();
         const depthTexture = device.createTexture({
-            size: [this.context.width, this.context.height, 1],
+            size: [this._context.width, this._context.height, 1],
             format: 'depth24plus',
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         });
         const depthView = depthTexture.createView()
 
-        // 创建命令编码器
         const commandEncoder = device.createCommandEncoder({
             label: 'commandEncoder'
         });
-
-        // 创建渲染通道
         const renderPass = commandEncoder.beginRenderPass({
             label: 'renderPass',
             colorAttachments: [{
                 view: textureView,
                 loadOp: "clear",
                 storeOp: "store",
-                clearValue: { r: 0.1, g: 0.1, b: 0.1, a: 1 }
+                clearValue: {
+                    r: this._clearColor[0],
+                    g: this._clearColor[1],
+                    b: this._clearColor[2],
+                    a: this._clearColor[3]
+                }
             }],
             depthStencilAttachment: {
                 view: depthView,
                 depthLoadOp: 'clear',
                 depthClearValue: 1.0,
                 depthStoreOp: 'store',
-                /* 可选：stencilLoadOp, stencilStoreOp, stencilClearValue */
             }
         });
 
-        // 遍历可渲染的组件，开始渲染
-        for (const component of renderables) {
+        // 设置视口
+        if (this._viewport) {
+            const { x, y, width, height } = this._viewport;
+            renderPass.setViewport(x, y, width, height, 0, 1);
+        } else {
+            // 默认全屏
+            renderPass.setViewport(0, 0, this._context.width, this._context.height, 0, 1);
+        }
+
+        for (const component of final) {
             if (!component || !component.mesh) continue;
             if (!component.mesh.uploaded) {
-                // 你需要实现 mesh.upload for WebGPU
-                component.mesh.upload(this.context);
+                component.mesh.upload(this._context);
             }
 
-            // 获取shader
             const defines = {
                 ...component.mesh.getShaderMacroDefines(),
                 ...component.material.getShaderMacroDefines()
             };
-            // const shader = this.getOrCreateShader(component.material.shaderName, defines);
-            // if (!shader) continue;
-
-            // 获取/创建 pipeline
-            // 你需要根据材质/mesh/shader生成 pipelineDesc
-            // const pipelineDesc = component.material.getWebGPURenderPipelineDescriptor(this.gpuContext, shader, component.mesh);
-            // const pipeline = this.getOrCreatePipeline(component.mesh, shader, pipelineDesc);
-            // if (!(pipeline instanceof GPURenderPipeline)) {
-            //     console.error('An invalid GPURenderPipeline instance was found.');
-            //     continue;
-            // }
-
-            // const shader = component.material.getShader(this.device, this.graphicsApi, {
-            //     overrideDefaultDefines: true,
-            //     defines: component.material.getShaderMacroDefines()
-            // });
-            const shader = component.material.getShader(this.context, this.graphicsApi, {
+            const shader = component.material.getShader(this._context, this.graphicsApi, {
                 overrideDefaultDefines: false,
             });
             if (!shader) {
@@ -335,29 +350,27 @@ export class WebGPURenderer extends Renderer {
             const pipeline = (shader as WebGPUShaderModule).getRenderPipeline(
                 createPipelineKey({
                     shaderName: "base_pbr",
-                    defines: defines,   // material.defines,
-                    vertexLayout: 'PNCT', //mesh.getLayoutKey(), // 例如 "PNCT"
+                    defines: defines,
+                    vertexLayout: 'PNCT',
                     renderTargetFormat: "bgra8unorm",
                     transparent: component.material.transparent,
                     doubleSided: component.material.doubleSided,
-                    depthCompare: 'less', //component.material.depthFunc === WebGLConstants.LEQUAL ? "less-equal" : "less",
+                    depthCompare: 'less',
                     depthWrite: component.material.depthWrite,
                     frontFace: "ccw"
                 }),
                 pipelineDesc
             );
 
-            // === xxxxxx ===
             const uniforms = component.material.getUniforms(
-                this.context, this.currentCamera, component, lights
+                this._context, this.currentCamera, component, finalLights
             );
 
             const textures = component.material.getTextures();
             (shader as WebGPUShaderModule).setTextures(textures);            
-            shader.setUniforms(uniforms);   // 目前也包含了textures，因此，必须在shader.setTextures执行完，才能调用
+            shader.setUniforms(uniforms);
             const bindGroup = (shader as WebGPUShaderModule).getBindGroup();
             
-            // === 4. 设置渲染管线和资源 ===
             renderPass.setPipeline(pipeline);
             renderPass.setBindGroup(0, bindGroup);
             renderPass.setVertexBuffer(0, (component.mesh.vbo as GPUBuffer));
@@ -370,9 +383,9 @@ export class WebGPURenderer extends Renderer {
                 renderPass.draw(component.mesh.geometry.vertexCount);
             }
         }
-
         renderPass.end();
         device.queue.submit([commandEncoder.finish()]);
+
     }
    
 }

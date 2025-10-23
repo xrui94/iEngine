@@ -1,50 +1,55 @@
 import { Camera } from '../views/cameras/Camera';
-import { WebGLContext, WebGLContextOptions } from '../renderers/webgl/WebGLContext';
-import { WebGPUContext, WebGPUContextOptions } from '../renderers/webgpu/WebGPUContext';
 
 import { Node } from '../core/Node';
 import { RenderableComponent } from '../renderers/RenderableComponent';
 import { LightComponent } from '../lights/LightComponent';
 import { Matrix4 } from '../math/Matrix4';
+import { Transform } from '../ecs/components/TransformECS';
+import { LightECS } from '../ecs/components/LightECS';
+import { newEntityId } from '../ecs/Entity';
 
 import type { Light } from '../lights/Light';
 import type { RendererType } from '../renderers/Renderer';
 import type { Renderable } from '../renderers/Renderable';
+import { WorldECS } from '../ecs/WorldECS';
+import { World } from './World';
+import { SystemManagerECS } from '../ecs/SystemManager';
+import { TransformSystem } from '../ecs/systems/TransformSystem';
+import { LightSystem } from '../ecs/systems/LightSystem';
+import { RenderSystem } from '../ecs/systems/RenderSystem';
 
 export class Scene {
 
     ready: boolean = false;
 
-    private _canvas: HTMLCanvasElement | null = null;
+
 
     // 使用数组存储多个相机
     private _cameras: Camera[] = [];
     // 当前活动相机
     private _activeCamera: Camera | null = null;
 
-    private _activeContext!: WebGLContext | WebGPUContext;
-    private _webglContext: WebGLContext;
-    private _webgpuContext: WebGPUContext;
 
     private _root: Node;
+    private _ecsWorld: WorldECS;
+    private _world: World;
+    private _ecsSystemManager: SystemManagerECS;
+    private _renderSystem: RenderSystem;
 
-    constructor(canvas: string | HTMLCanvasElement, options: WebGLContextOptions | WebGPUContextOptions) {
-        // 获取 canvas 元素
-        if (canvas instanceof HTMLCanvasElement) {
-            this._canvas = canvas;
-        } else if (typeof canvas === 'string') {
-            // 如果传入的是字符串，则尝试获取对应的 canvas 元素
-            this._canvas = document.getElementById(canvas) as HTMLCanvasElement;
-        }
-        // 确保 canvas 元素存在
-        if (!this._canvas) {
-            throw new Error('Canvas element not found');
-        }
-
-        this._webglContext = new WebGLContext(this._canvas, options);
-        this._webgpuContext = new WebGPUContext(this._canvas, options);
-
+    constructor() {
+        // OOP组件架构
         this._root = new Node('SceneRoot');
+        this._root.setOwnerScene(this);
+        this._world = new World();
+
+        // ECS设计架构
+        this._ecsWorld = new WorldECS();
+        this._ecsSystemManager = new SystemManagerECS();
+        this._ecsSystemManager.addSystem(new TransformSystem());
+        this._ecsSystemManager.addSystem(new LightSystem());
+        const renderSys = new RenderSystem();
+        this._ecsSystemManager.addSystem(renderSys);
+        this._renderSystem = renderSys;
     }
 
     // 获取所有相机
@@ -87,27 +92,45 @@ export class Scene {
         this._activeCamera = cam;
     }
 
-    get context(): WebGLContext | WebGPUContext {
-        return this._activeContext;
+    // 暴露 ECS 世界给外部使用
+    getECSWorld(): WorldECS {
+        return this._ecsWorld;
     }
 
-    set context(renderer: RendererType) {
-        if (renderer === 'webgl') {
-            this._activeContext = this._webglContext;
-        } else if (renderer === 'webgpu') {
-            this._activeContext = this._webgpuContext;
-        } else {
-            throw new Error(`Invalid renderer type: ${renderer}, it must be one of "webgl" or "webgpu"`);
-        }
-    }   
+    // 暴露 OOP World 给外部使用
+    getWorld(): World {
+        return this._world;
+    }
+
+    // 便捷：暴露 ECS 系统管理器（如需外部访问）
+    getECSSystemManager(): SystemManagerECS {
+        return this._ecsSystemManager;
+    }
 
     // 添加实体到场景
     addEntity(entity: Node): void {
+        entity.setOwnerScene(this);
         this._root.addChild(entity);
+    }
+
+    // 便捷添加光源：OOP 组件 + 可选 ECS 注册
+    addLight(light: Light, useECS: boolean = false): void {
+        const node = new Node(light?.constructor?.name ?? 'Light');
+        const lightComponent = new LightComponent(light);
+        node.addComponent(lightComponent);
+        this.addEntity(node);
+
+        if (useECS) {
+            const eid = newEntityId();
+            this._ecsWorld.createEntity(eid);
+            this._ecsWorld.addComponent(eid, 'LightECS', new LightECS(light));
+            this._ecsWorld.addComponent(eid, 'Transform', new Transform());
+        }
     }
 
     // 从场景中移除实体
     removeEntity(entity: Node): void {
+        entity.setOwnerScene(undefined);
         this._root.removeChild(entity);
     }
 
@@ -117,35 +140,31 @@ export class Scene {
     }
 
     update(deltaTime: number): void {
-        // 更新ECS实体（通过根节点遍历所有子节点）
+        // 更新OOP实体树
         this._root.update(deltaTime);
+        // 更新所有ECS系统（Transform、Light等）
+        this._ecsSystemManager.update(this._ecsWorld, deltaTime);
+        // 在每帧更新后，构建轻量 World 视图供渲染器消费
+        this._world.scanScene(this);
     }
 
-    // 收集所有 Renderable（供 Renderer 使用）
-    collectRenderables(out: Renderable[]): void {
-        // 收集ECS实体中的可渲染对象（通过根节点遍历所有子节点）
-        this.traverse(this._root, node => {
-            const comp = node.getComponent(RenderableComponent);
-            if (comp) {
-                out.push({
-                    mesh: comp.mesh,
-                    material: comp.material,
-                    worldTransform: node.getWorldTransform(),
-                    layer: comp.layer,
-                });
-            }
-        });
+    // 统一查询接口：返回当前场景的渲染对象与光源
+    getRenderables(): Renderable[] {
+        const arr: Renderable[] = [];
+        // 来自轻量 World 的 OOP 渲染对象
+        arr.push(...this._world.getRenderables());
+        // 来自 ECS 的渲染对象（RenderSystem 缓存）
+        arr.push(...this._renderSystem.getRenderables());
+        return arr;
     }
-    
-    // 收集所有光源（供 Renderer 使用）
-    collectLights(out: Light[]): void {
-        // 收集ECS实体中的光源组件（通过根节点遍历所有子节点）
-        this.traverse(this._root, node => {
-            const lightComp = node.getComponent(LightComponent);
-            if (lightComp) {
-                out.push(lightComp.light);
-            }
-        });
+
+    getLights(): Light[] {
+        const arr: Light[] = [];
+        // 来自轻量 World 的光源
+        arr.push(...this._world.getLights());
+        // 来自 ECSWorld 的光源
+        for (const le of this._ecsWorld.getLights()) arr.push(le.light);
+        return arr;
     }
 
     // 递归遍历场景树

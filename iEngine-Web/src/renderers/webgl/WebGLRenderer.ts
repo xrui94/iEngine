@@ -14,7 +14,10 @@ import type { Mesh } from '../../core/Mesh';
 import type { WebGLContextOptions } from './WebGLContext';
 
 export class WebGLRenderer extends Renderer {
-    private context!: WebGLContext;
+    private _canvas: HTMLCanvasElement = null!;
+    private _context!: WebGLContext;
+    private _clearColor: [number, number, number, number] = [0, 0, 0, 1];
+    private _viewport: { x: number; y: number; width: number; height: number } | null = null;
     private graphicsApi!: GraphicsAPI;
     private shaders: Map<string, WebGLShaderProgram> = new Map();
     private _isInitialized: boolean = false;
@@ -52,13 +55,14 @@ export class WebGLRenderer extends Renderer {
         // this.resize();
     }
 
-    init(context: WebGLContext): void {
-        this.context = context;
-        const useWebGL1 = context.useWebGL1;
+    init(canvas: HTMLCanvasElement, options: WebGLContextOptions): void {
+        this._canvas = canvas;
+        this._context = new WebGLContext(canvas, options);
+        const useWebGL1 = options.useWebGL1;
         this.graphicsApi = useWebGL1 ? 'webgl1' : 'webgl2';
 
         //
-        this.context.init();
+        this._context.init();
         // this.initShaders();
         this.resize();
 
@@ -71,7 +75,7 @@ export class WebGLRenderer extends Renderer {
 
     // 提供gl上下文的访问器
     get glContext(): WebGLRenderingContext {
-        return this.context.getDevice();
+        return this._context.getDevice();
     }
 
     // private initShaders(): void {
@@ -122,56 +126,80 @@ export class WebGLRenderer extends Renderer {
         const key = WebGLRenderPipeline.makeHash(mesh, shader, state);
         let pipeline = this.renderPipelineCache.get(key);
         if (!pipeline) {
-            pipeline = new WebGLRenderPipeline(this.context, mesh, shader, state);
+            pipeline = new WebGLRenderPipeline(this._context, mesh, shader, state);
             this.renderPipelineCache.set(key, pipeline);
         }
         return pipeline;
     }
 
-    clear(): void {
-        this.context.clear();
-    }
-
-    resize(): void {
-        const displayWidth = this.context.displayWidth;
-        const displayHeight = this.context.displayHeight;
-        this.context.resize(displayWidth, displayHeight);
-        
-        // 更新相机宽高比（如果是透视相机）
-        if (this.currentCamera instanceof PerspectiveCamera) {
-            this.currentCamera.setAspect(this.context.width / this.context.height);
+    setClearColor(color?: [number, number, number, number]): void {
+        if (color) {
+            this._clearColor = color;
+            const gl = this.glContext;
+            gl.clearColor(color[0], color[1], color[2], color[3]);
         }
     }
 
-    render(scene: Scene): void {
+    setViewport(viewport?: { x: number; y: number; width: number; height: number }): void {
+        const gl = this.glContext;
+        if (viewport) {
+            this._viewport = viewport;
+            gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+        } else {
+            this._viewport = null;
+            gl.viewport(0, 0, this._context.width, this._context.height);
+        }
+    }
+
+    clear(): void {
+        this._context.clear();
+    }
+
+    resize(): void {
+        const displayWidth = this._context.displayWidth;
+        const displayHeight = this._context.displayHeight;
+        this._context.resize(displayWidth, displayHeight);
+        
+        // 更新相机宽高比（如果是透视相机）
+        if (this.currentCamera instanceof PerspectiveCamera) {
+            this.currentCamera.setAspect(this._context.width / this._context.height);
+        }
+    }
+
+    render(scene: Scene, options?: { clearCanvas?: boolean }): void {
         this.currentCamera = scene.activeCamera;
         if (!this.currentCamera ) {
             console.error("No active camera set for rendering");
             return;
         }
 
-        // 从场景中收集所有可渲染对象
-        const renderables: Renderable[] = [];
-        scene.collectRenderables(renderables);
+        // 使用基类统一聚合（去重）
+        const final = this.aggregateRenderables(scene);
 
-        // 检查场景是否有组件
-        // 如果没有组件，直接返回
-        if (renderables.length === 0) {
+        // 检查是否有可渲染对象
+        if (final.length === 0) {
             console.warn("No components to render in the scene");
             return;
         }
         
-        // 获取场景中的所有光照
-        const lights: Light[] = [];
-        scene.collectLights(lights);
+        // 使用基类统一聚合光源（去重）
+        const finalLights = this.aggregateLights(scene);
         
-        // 清除画布
-        this.context.clear();
+        // 根据选项决定是否清除画布（默认清除）
+        if (options?.clearCanvas !== false) {
+            if (this._viewport) {
+                // 如果设置了viewport，使用局部清屏
+                this._context.clearViewport(this._viewport, this._clearColor);
+            } else {
+                // 否则清除整个画布
+                this._context.clear();
+            }
+        }
         
         // 遍历所有组件，渲染每个组件
-        for (const component of renderables) {
+        for (const component of final) {
             // // 更新model中的一些状态等？
-            // component.update(this.context, camera, shader);
+            // component.update(this._context, camera, shader);
 
             // const shader = this.shaders.get(component.material.shaderName);
             // if (!shader) {
@@ -185,7 +213,7 @@ export class WebGLRenderer extends Renderer {
                 continue;
             }
             if (!component.mesh.uploaded) {
-                component.mesh.upload(this.context);
+                component.mesh.upload(this._context);
             }
 
             // 2. 根据材质特性，创建Shder
@@ -193,8 +221,7 @@ export class WebGLRenderer extends Renderer {
                 ...component.mesh.getShaderMacroDefines(),
                 ...component.material.getShaderMacroDefines()
             };
-            // const shader = this.getOrCreateShader(component.material.shaderName, defines);
-            const shader = component.material.getShader(this.context, this.graphicsApi, {
+            const shader = component.material.getShader(this._context, this.graphicsApi, {
                 defines,
                 overrideDefaultDefines: true
             });
@@ -210,45 +237,20 @@ export class WebGLRenderer extends Renderer {
             );
 
             // 4. 切换 pipeline（切换use着色器程序、绑定VAO、设置渲染状态）
-            pipeline.bind(this.context);
-
-            // 5. 设置 uniform，将相机、材质、光照等参数数据绑定到Shader的uniform，以最终上传到GPU
-            
-            // 设置相机参数（模型变换矩阵）
-            // shader.setMatrix4('uModelMatrix', this.transform);
-            // this.modelMatrix.identity();
-            // shader.setMatrix4('uModelViewMatrix', this.viewMatrix.multiply(this.modelMatrix));
-            // shader.setMatrix4('uProjectionMatrix', this.projectionMatrix);
-            // shader.setMatrix4('uViewMatrix', this.currentCamera.getViewMatrix());
-            
-            // 计算模型-视图矩阵（将模型的变换矩阵和相机的视图矩阵相乘）
-            // const modelViewMatrix = this.currentCamera.getViewMatrix().multiply(component.transform);
-            // shader.setMatrix4('uModelViewMatrix', modelViewMatrix);
-            // shader.setMatrix4('uProjectionMatrix', this.currentCamera.getProjectionMatrix());
-
-            // // 设置材质颜色
-            // shader.setVector3('uColor', component.material.color[0], component.material.color[1], component.material.color[2]);
-
-            // 设置光照参数
+            pipeline.bind(this._context);
 
             // 让材质/Shader自己决定需要哪些uniform
             const uniforms = component.material.getUniforms(
-                this.context, this.currentCamera, component, lights
+                this._context, this.currentCamera, component, finalLights
             );
             const textures = component.material.getTextures();
-            // WebGL中texture也是一种特殊的uniform，因此uniform和texture可以一起设置
             shader.setUniforms({
                 ...uniforms,
                 ...textures
             });
 
             // 6. 绘制(DrawCall)
-            this.context.draw(component);
-
-            // 7. 解绑渲染管线，主要是VAO（可选，因为现代的 WebGL 的 VAO 绑定是全局的，
-            // 若下一帧/下一个 draw 会切换 pipeline，则新的 pipeline.bind 会自动覆盖
-            // 之前的绑定，因此，理论上不 unbind 也不会出错）
-            pipeline.unbind(this.context);
+            this._context.draw(component);
         }
     }
 

@@ -9,7 +9,9 @@ import type { BufferDescriptor, WriteBufferDescriptor } from '../BufferDescripto
 import type { TextureDescriptor } from '../TextureDescriptor';
 
 export type WebGPUContextOptions= {
-
+    // 可根据 WebGPU 规范后续补充，例如：
+    // deviceDescriptor?: GPUDeviceDescriptor;
+    // adapterOptions?: GPURequestAdapterOptions;
 };
 
 export class WebGPUContext extends Context {

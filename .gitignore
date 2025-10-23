@@ -1,5 +1,6 @@
 .vscode/
 .vs/
+.trae/
 
 node_modules/
 dist/

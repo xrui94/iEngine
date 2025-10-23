@@ -31,8 +31,22 @@ import { DirectionalLight } from "./lights/DirectionalLight";
 import { PointLight } from "./lights/PointLight";
 import { SpotLight } from "./lights/SpotLight";
 
+import { WebGLRenderer } from "./renderers/webgl/WebGLRenderer";
+import { WebGPURenderer } from "./renderers/webgpu/WebGPURenderer";
+import { RenderView } from "./core/RenderView";
 import { RenderLayerID } from "./renderers/RenderLayer";
 import { RenderableComponent } from "./renderers/RenderableComponent";
+
+// ECS exports (fused namespace paths)
+import { WorldECS } from "./ecs/WorldECS";
+import { SystemECS } from "./ecs/System";
+import { SystemManagerECS } from "./ecs/SystemManager";
+import { Transform } from "./ecs/components/TransformECS";
+import { MeshECS } from "./ecs/components/MeshECS";
+import { MaterialECS } from "./ecs/components/MaterialECS";
+import { RenderLayerECS } from "./ecs/components/RenderLayerECS";
+import { LightECS } from "./ecs/components/LightECS";
+import { RenderSystem } from "./ecs/systems/RenderSystem";
 
 const iEngine = {
     Engine,
@@ -70,8 +84,21 @@ const iEngine = {
     //
     Node,
     //
+    WebGLRenderer,
+    WebGPURenderer,
+    RenderView,
     RenderLayerID,
     RenderableComponent,
+    // ECS
+    WorldECS,
+    SystemECS,
+    SystemManagerECS,
+    Transform,
+    MeshECS,
+    MaterialECS,
+    RenderLayerECS,
+    LightECS,
+    RenderSystem,
 };
 
 export default Object.freeze(iEngine);

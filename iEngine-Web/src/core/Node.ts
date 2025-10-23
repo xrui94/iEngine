@@ -2,6 +2,7 @@
 // Node 不包含任何渲染/更新逻辑，只提供 getWorldTransform()
 import { Matrix4, Vector3 } from '../math';
 import { Component } from './Component';
+import type { Scene } from '../scenes/Scene';
 
 export class Node {
     private localPosition: Vector3 = new Vector3();
@@ -16,6 +17,7 @@ export class Node {
     private components: Component[] = [];
     
     public name: string;
+    private ownerScene?: Scene;
 
     constructor(name: string = 'Node') {
         this.name = name;
@@ -45,6 +47,8 @@ export class Node {
         child.parent = this;
         child.markTransformDirty();
         this.children.push(child);
+        // 继承所属场景引用
+        child.setOwnerScene(this.ownerScene);
     }
 
     removeChild(child: Node): void {
@@ -52,6 +56,8 @@ export class Node {
         if (index !== -1) {
             this.children.splice(index, 1);
             child.parent = null;
+            // 移除所属场景引用
+            child.setOwnerScene(undefined);
         }
     }
 
@@ -106,9 +112,18 @@ export class Node {
         }
     }
 
+    // --- 所属场景管理 ---
+    setOwnerScene(scene: Scene | undefined): void {
+        this.ownerScene = scene;
+        for (const child of this.children) {
+            child.setOwnerScene(scene);
+        }
+    }
+
     // --- 内部 ---
     private markTransformDirty(): void {
         this.transformDirty = true;
+        // 移除 HybridCoordinator 后，不再自动标记场景桥接增量同步
         for (const child of this.children) {
             child.markTransformDirty();
         }

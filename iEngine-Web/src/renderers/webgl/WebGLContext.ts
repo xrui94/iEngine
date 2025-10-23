@@ -117,6 +117,23 @@ export class WebGLContext extends Context {
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     }
 
+    clearViewport(viewport: { x: number; y: number; width: number; height: number }, clearColor?: [number, number, number, number]): void {
+        // 启用scissor test来限制清屏区域
+        this.gl.enable(this.gl.SCISSOR_TEST);
+        this.gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+        
+        // 如果提供了清屏颜色，则设置它
+        if (clearColor) {
+            this.gl.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+        }
+        
+        // 清屏
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        
+        // 禁用scissor test
+        this.gl.disable(this.gl.SCISSOR_TEST);
+    }
+
     resize(width: number, height: number): void {
         if (this.canvas.width !== width || this.canvas.height !== height) {
             this.canvas.width = width;

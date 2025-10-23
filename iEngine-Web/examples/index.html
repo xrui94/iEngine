@@ -259,22 +259,25 @@
         }
 
         // 1. 初始化引擎
-        const engine = new iEngine.Engine({
+        const engine = new iEngine.Engine(/*canvas, {
             renderer: 'webgpu',
-        });
+            webGLOptions: {
+                useWebGL1: true, // 默认使用 WebGL2 渲染器
+                attrs: {
+                    antialias: true, // 开启抗锯齿
+                    alpha: true, // 开启透明背景
+                }
+            }
+        }*/);
 
         // 2. 启动引擎（可以在 Engine 实例化后，立即通过 start 方法启动引擎）
-        engine.start();
+        // await engine.start();
+
+        const canvas = document.getElementById('glCanvas');
 
         // 3. 创建场景
-        const canvas = document.getElementById('glCanvas');
-        const scene = new iEngine.Scene(canvas, {
-            useWebGL1: true, // 默认使用 WebGL2 渲染器
-            attrs: {
-                antialias: true, // 开启抗锯齿
-                alpha: true, // 开启透明背景
-            }
-        });
+        const scene = new iEngine.Scene();
+        const minimapScene = new iEngine.Scene();
 
         // 4. 创建相机
         const camera = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
@@ -282,6 +285,8 @@
         camera.lookAt(0, 0, 0);
         // 设置场景的相机
         scene.activeCamera = camera;
+        
+        minimapScene.activeCamera = camera;
 
         // 5. 创建相机的控制器
         let controls = new iEngine.OrbitControls(camera, canvas);
@@ -295,6 +300,7 @@
         const ambientLightComponent = new iEngine.LightComponent(ambientLight);
         ambientLightEntity.addComponent(ambientLightComponent);
         scene.addEntity(ambientLightEntity);
+        minimapScene.addEntity(ambientLightEntity);
 
         // 添加平行光
         const directionalLight = new iEngine.DirectionalLight({
@@ -305,7 +311,8 @@
         const directionalLightComponent = new iEngine.LightComponent(directionalLight);
         directionalLightEntity.addComponent(directionalLightComponent);
         scene.addEntity(directionalLightEntity);
-
+        minimapScene.addEntity(directionalLightEntity);
+        
         // 7. 创建ECS实体并添加到场景中
         const triangleEntity = createTriangleEntity();
         const cubeEntity = createCubeEntity();
@@ -313,15 +320,60 @@
         // 将实体添加到场景
         scene.addEntity(triangleEntity);
         scene.addEntity(cubeEntity);
-        scene.addEntity(wireframeCubeEntity);
+        // scene.addEntity(wireframeCubeEntity); // 线框移至小地图
+
+        minimapScene.addEntity(cubeEntity);
+        minimapScene.addEntity(wireframeCubeEntity);
 
         // 将场景添加到引擎
-        engine.addScene('simple-scene', scene);
+        // engine.addScene('simple-scene', scene);
+
+        // const renderer = engine.createRenderer('webgl');
+        const renderer = new iEngine.WebGLRenderer();
+        // const renderer = new iEngine.WebGPURenderer();
+        // const webGPURenderer = new iEngine.WebGPURenderer();
+
+        // 创建共享的渲染器实例（避免多个渲染器冲突）
+        const sharedRenderer = new iEngine.WebGLRenderer();
+
+        const mainView = new iEngine.RenderView({
+            canvas,
+            scene: scene,
+            camera: camera,
+            renderer: sharedRenderer,
+            // 主视图占据整个canvas
+            viewport: { x: 0, y: 0, width: canvas.clientWidth, height: canvas.clientHeight },
+            clearColor: [0.1, 0.1, 0.1, 1]
+        });
+
+        const minimapView = new iEngine.RenderView({
+            canvas,
+            scene: minimapScene,
+            camera: camera,
+            renderer: sharedRenderer,
+            // 小地图视图在右下角，200x150像素
+            // 计算逻辑:
+            // x = canvas.clientWidth - (viewport.width + marginRight)
+            // y = canvas.clientHeight - (viewport.height + marginBottom)
+            // 这里的 viewport.width = 200 ， viewport.height = 150 ，边距取约 20 像素。
+            // viewport: { x: canvas.clientWidth - 220, y: canvas.clientHeight - 170, width: 200, height: 150 },
+            viewport: { x: 70, y: 10, width: 200, height: 150 },
+            clearColor: [0.2, 0.2, 0.2, 1]  // 稍微不同的背景色以区分
+        });
+
+        await mainView.init();
+        await minimapView.init();
 
         // 8. 控制渲染循环（ECS架构方式）
         engine.setAnimationLoop(() => {
             // 引擎标准的帧渲染更新（会自动更新所有实体）
-            engine.tick();
+            // engine.tick();
+            
+            // 先渲染主视图（全屏清屏）
+            mainView.render();
+            
+            // 再渲染小地图视图（不清屏，叠加渲染）
+            minimapView.render();
         });
 
         // 工具栏按钮事件

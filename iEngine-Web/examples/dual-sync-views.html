@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>左右双视图（相机同步）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { background: #222; display: flex; }
+    .half { width: 50vw; height: 100vh; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="half"><canvas id="leftCanvas"></canvas></div>
+  <div class="half"><canvas id="rightCanvas"></canvas></div>
+  <script type="module">
+    import iEngine from '../dist/iengine.js'
+
+    function createTriangle(color=[1,0,0]) {
+      const e = new iEngine.Node('Tri');
+      const mesh = new iEngine.Mesh(new iEngine.Triangle(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const mat = new iEngine.BaseMaterial({ shaderName: 'base_material' });
+      mat.setColor(color[0], color[1], color[2]);
+      e.addComponent(new iEngine.RenderableComponent(mesh, mat, iEngine.RenderLayerID.Opaque));
+      return e;
+    }
+    function createCube(color=[0.7,0.7,0.7]) {
+      const e = new iEngine.Node('Cube');
+      const mesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const pbr = new iEngine.PbrMaterial({
+        baseColor: new iEngine.Color(color[0], color[1], color[2]),
+      });
+      e.addComponent(new iEngine.RenderableComponent(mesh, pbr, iEngine.RenderLayerID.Opaque));
+      return e;
+    }
+    function createWireCube() {
+      const e = new iEngine.Node('WireCube');
+      const mesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.LINES));
+      const mat = new iEngine.BaseMaterial({ shaderName: 'base_material' });
+      mat.setColor(1,1,0);
+      e.addComponent(new iEngine.RenderableComponent(mesh, mat, iEngine.RenderLayerID.Opaque));
+      return e;
+    }
+
+    const leftCanvas = document.getElementById('leftCanvas');
+    const rightCanvas = document.getElementById('rightCanvas');
+
+    const leftScene = new iEngine.Scene();
+    const rightScene = new iEngine.Scene();
+
+    const leftCam = new iEngine.PerspectiveCamera(60, leftCanvas.width / leftCanvas.height, 0.1, 1000);
+    leftCam.setPosition(0, 0, 6); leftCam.lookAt(0,0,0); leftScene.activeCamera = leftCam;
+    const rightCam = new iEngine.PerspectiveCamera(60, rightCanvas.width / rightCanvas.height, 0.1, 1000);
+    rightCam.setPosition(0, 0, 6); rightCam.lookAt(0,0,0); rightScene.activeCamera = rightCam;
+
+    const controls = new iEngine.OrbitControls(leftCam, leftCanvas);
+
+    const amb = new iEngine.AmbientLight({ color: new iEngine.Color(0.3,0.3,0.3) });
+    const ambE = new iEngine.Node('Ambient'); ambE.addComponent(new iEngine.LightComponent(amb));
+    leftScene.addEntity(ambE); rightScene.addEntity(ambE);
+    const dir = new iEngine.DirectionalLight({ color: new iEngine.Color(1,1,1), intensity: 5 });
+    const dirE = new iEngine.Node('Dir'); dirE.addComponent(new iEngine.LightComponent(dir));
+    leftScene.addEntity(dirE); rightScene.addEntity(dirE);
+
+    // 左：立方体（灰），三角形（红）
+    leftScene.addEntity(createCube([0.7,0.7,0.7]));
+    leftScene.addEntity(createTriangle([1,0,0]));
+
+    // 右：立方体线框 + 立方体（蓝）
+    rightScene.addEntity(createWireCube());
+    rightScene.addEntity(createCube([0.2,0.4,1.0]));
+
+    const leftRenderer = new iEngine.WebGLRenderer();
+    const rightRenderer = new iEngine.WebGLRenderer();
+
+    const leftView = new iEngine.RenderView({ canvas: leftCanvas, scene: leftScene, camera: leftCam, renderer: leftRenderer, viewport: { x:0,y:0,width:leftCanvas.clientWidth, height:leftCanvas.clientHeight }, clearColor: [0.1,0.1,0.1,1] });
+    const rightView = new iEngine.RenderView({ canvas: rightCanvas, scene: rightScene, camera: rightCam, renderer: rightRenderer, viewport: { x:0,y:0,width:rightCanvas.clientWidth, height:rightCanvas.clientHeight }, clearColor: [0.12,0.12,0.18,1] });
+
+    await leftView.init();
+    await rightView.init();
+
+    function syncRightCam() {
+      const tgt = leftCam.getTarget ? leftCam.getTarget() : { x:0,y:0,z:0 };
+      const p = leftCam.position;
+      rightCam.setPosition(p.x, p.y, p.z);
+      rightCam.lookAt(tgt.x, tgt.y, tgt.z);
+    }
+
+    const engine = new iEngine.Engine();
+    engine.setAnimationLoop(() => {
+      syncRightCam();
+      leftView.render();
+      rightView.render();
+    });
+
+    // 响应尺寸变化
+    window.addEventListener('resize', () => {
+      leftRenderer.resize();
+      rightRenderer.resize();
+    });
+  </script>
+</body>
+</html>

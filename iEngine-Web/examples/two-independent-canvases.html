@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>两个独立 Canvas（互不关联）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { background: #222; display: flex; }
+    .half { width: 50vw; height: 100vh; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="half"><canvas id="canvasA"></canvas></div>
+  <div class="half"><canvas id="canvasB"></canvas></div>
+  <script type="module">
+    import iEngine from '../dist/iengine.js'
+
+    function createSceneA(canvas) {
+      const scene = new iEngine.Scene();
+      const cam = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
+      cam.setPosition(0, 0, 6); cam.lookAt(0,0,0); scene.activeCamera = cam;
+
+      const amb = new iEngine.AmbientLight({ color: new iEngine.Color(0.3,0.3,0.3) });
+      const ambE = new iEngine.Node('Ambient'); ambE.addComponent(new iEngine.LightComponent(amb)); scene.addEntity(ambE);
+      const dir = new iEngine.DirectionalLight({ color: new iEngine.Color(1,1,1), intensity: 5 });
+      const dirE = new iEngine.Node('Dir'); dirE.addComponent(new iEngine.LightComponent(dir)); scene.addEntity(dirE);
+
+      const tri = new iEngine.Node('Tri');
+      const triMesh = new iEngine.Mesh(new iEngine.Triangle(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const triMat = new iEngine.BaseMaterial({ shaderName: 'base_material' }); triMat.setColor(1,0,0);
+      tri.addComponent(new iEngine.RenderableComponent(triMesh, triMat, iEngine.RenderLayerID.Opaque));
+      scene.addEntity(tri);
+
+      const renderer = new iEngine.WebGLRenderer();
+      const view = new iEngine.RenderView({ canvas, scene, camera: cam, renderer, viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight }, clearColor: [0.1,0.1,0.1,1] });
+      return { scene, cam, renderer, view, controls: new iEngine.OrbitControls(cam, canvas) };
+    }
+
+    function createSceneB(canvas) {
+      const scene = new iEngine.Scene();
+      const cam = new iEngine.PerspectiveCamera(60, canvas.width / canvas.height, 0.1, 1000);
+      cam.setPosition(3, 2, 3); cam.lookAt(0,0,0); scene.activeCamera = cam;
+
+      const amb = new iEngine.AmbientLight({ color: new iEngine.Color(0.3,0.3,0.3) });
+      const ambE = new iEngine.Node('Ambient'); ambE.addComponent(new iEngine.LightComponent(amb)); scene.addEntity(ambE);
+      const dir = new iEngine.DirectionalLight({ color: new iEngine.Color(1,1,1), intensity: 5 });
+      const dirE = new iEngine.Node('Dir'); dirE.addComponent(new iEngine.LightComponent(dir)); scene.addEntity(dirE);
+
+      const cube = new iEngine.Node('Cube');
+      const cubeMesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const pbr = new iEngine.PbrMaterial({
+        baseColor: new iEngine.Color(0.2,0.6,1.0),
+      });
+      cube.addComponent(new iEngine.RenderableComponent(cubeMesh, pbr, iEngine.RenderLayerID.Opaque));
+      scene.addEntity(cube);
+
+      const wire = new iEngine.Node('WireCube');
+      const wireMesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.LINES));
+      const mat = new iEngine.BaseMaterial({ shaderName: 'base_material' }); mat.setColor(1,1,0);
+      wire.addComponent(new iEngine.RenderableComponent(wireMesh, mat, iEngine.RenderLayerID.Opaque));
+      scene.addEntity(wire);
+
+      const renderer = new iEngine.WebGLRenderer();
+      const view = new iEngine.RenderView({ canvas, scene, camera: cam, renderer, viewport: { x:0,y:0,width:canvas.clientWidth, height:canvas.clientHeight }, clearColor: [0.12,0.12,0.18,1] });
+      return { scene, cam, renderer, view, controls: new iEngine.OrbitControls(cam, canvas) };
+    }
+
+    const canvasA = document.getElementById('canvasA');
+    const canvasB = document.getElementById('canvasB');
+
+    const sceneA = createSceneA(canvasA);
+    const sceneB = createSceneB(canvasB);
+
+    await sceneA.view.init();
+    await sceneB.view.init();
+
+    const engine = new iEngine.Engine();
+    engine.setAnimationLoop(() => {
+      sceneA.view.render();
+      sceneB.view.render();
+    });
+
+    window.addEventListener('resize', () => {
+      sceneA.renderer.resize();
+      sceneB.renderer.resize();
+    });
+  </script>
+</body>
+</html>

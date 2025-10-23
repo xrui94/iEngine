@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>四视图：正/俯/左/主（相机同步）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { background: #222; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .cell { width: 50vw; height: 50vh; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .label { position: absolute; background: rgba(0,0,0,.5); color:#fff; padding:4px 8px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="cell"><canvas id="frontCanvas"></canvas></div>
+  <div class="cell"><canvas id="topCanvas"></canvas></div>
+  <div class="cell"><canvas id="leftCanvas"></canvas></div>
+  <div class="cell"><canvas id="mainCanvas"></canvas></div>
+  <script type="module">
+    import iEngine from '../dist/iengine.js'
+
+    function createSceneContent() {
+      const tri = new iEngine.Node('Tri');
+      const triMesh = new iEngine.Mesh(new iEngine.Triangle(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const triMat = new iEngine.BaseMaterial({ shaderName: 'base_material' }); triMat.setColor(1,0,0);
+      tri.addComponent(new iEngine.RenderableComponent(triMesh, triMat, iEngine.RenderLayerID.Opaque));
+
+      const cube = new iEngine.Node('Cube');
+      const cubeMesh = new iEngine.Mesh(new iEngine.Cube(), new iEngine.Primitive(iEngine.PrimitiveType.TRIANGLES));
+      const pbr = new iEngine.PbrMaterial({
+        baseColor: new iEngine.Color(0.8,0.8,0.8),
+      });
+      cube.addComponent(new iEngine.RenderableComponent(cubeMesh, pbr, iEngine.RenderLayerID.Opaque));
+
+      return [tri, cube];
+    }
+
+    const frontCanvas = document.getElementById('frontCanvas');
+    const topCanvas = document.getElementById('topCanvas');
+    const leftCanvas = document.getElementById('leftCanvas');
+    const mainCanvas = document.getElementById('mainCanvas');
+
+    const frontScene = new iEngine.Scene();
+    const topScene = new iEngine.Scene();
+    const leftScene = new iEngine.Scene();
+    const mainScene = new iEngine.Scene();
+
+    const mainCam = new iEngine.PerspectiveCamera(60, mainCanvas.clientWidth / mainCanvas.clientHeight, 0.1, 1000);
+    mainCam.setPosition(3, 2, 3); mainCam.lookAt(0,0,0); mainScene.activeCamera = mainCam;
+    // 三视图改为正交相机，更贴近工程视图
+    const frontCam = new iEngine.OrthographicCamera(-1,1,1,-1,0.1,1000);
+    frontScene.activeCamera = frontCam;
+    const topCam = new iEngine.OrthographicCamera(-1,1,1,-1,0.1,1000);
+    topScene.activeCamera = topCam;
+    const leftCam = new iEngine.OrthographicCamera(-1,1,1,-1,0.1,1000);
+    leftScene.activeCamera = leftCam;
+    // 俯视图的 up 向量避免与视线共线
+    topCam.setUp(0,0,1);
+    // 已改为正交相机，移除旧的透视相机创建
+
+    const controls = new iEngine.OrbitControls(mainCam, mainCanvas);
+     let syncMode = 'mirror'; // 默认镜像主视图；按 A 切回工程视图锁轴
+
+    // 每个场景独立的灯光，避免跨场景复用节点
+    function addLights(scene) {
+      const amb = new iEngine.AmbientLight({ color: new iEngine.Color(0.3,0.3,0.3) });
+      const ambE = new iEngine.Node('Ambient'); ambE.addComponent(new iEngine.LightComponent(amb));
+      const dir = new iEngine.DirectionalLight({ color: new iEngine.Color(1,1,1), intensity: 5 });
+      const dirE = new iEngine.Node('Dir'); dirE.addComponent(new iEngine.LightComponent(dir));
+      scene.addEntity(ambE); scene.addEntity(dirE);
+    }
+
+    addLights(frontScene); addLights(topScene); addLights(leftScene); addLights(mainScene);
+
+    // 注意：每个场景需要各自的实体实例；旧的跨场景复用已移除。
+
+    const frontRenderer = new iEngine.WebGLRenderer();
+    const topRenderer = new iEngine.WebGLRenderer();
+    const leftRenderer = new iEngine.WebGLRenderer();
+    const mainRenderer = new iEngine.WebGLRenderer();
+
+    const frontView = new iEngine.RenderView({
+      canvas: frontCanvas,
+      scene: frontScene,
+      camera: frontCam,
+      renderer: frontRenderer,
+      viewport: { x:0,y:0,width:frontCanvas.clientWidth, height:frontCanvas.clientHeight },
+      clearColor: [0.1,0.1,0.1,1]
+    });
+    const topView   = new iEngine.RenderView({
+      canvas: topCanvas,
+      scene: topScene,
+      camera: topCam,
+      renderer: topRenderer,
+      viewport: { x:0,y:0,width:topCanvas.clientWidth,   height:topCanvas.clientHeight },
+      clearColor: [0.1,0.1,0.1,1]
+    });
+    const leftView  = new iEngine.RenderView({
+      canvas: leftCanvas,
+      scene: leftScene,
+      camera: leftCam,
+      renderer: leftRenderer,
+      viewport: { x:0,y:0,width:leftCanvas.clientWidth,  height:leftCanvas.clientHeight },
+      clearColor: [0.1,0.1,0.1,1]
+    });
+    const mainView  = new iEngine.RenderView({
+      canvas: mainCanvas,
+      scene: mainScene,
+      camera: mainCam,
+      renderer: mainRenderer,
+      viewport: { x:0,y:0,width:mainCanvas.clientWidth,  height:mainCanvas.clientHeight },
+      clearColor: [0.12,0.12,0.18,1]
+    });
+
+    await frontView.init(); 
+    await topView.init(); 
+    await leftView.init();
+    await mainView.init();
+
+    function syncOtherCams() {
+      const tgt = mainCam.target;
+      const dx = mainCam.position.x - tgt.x;
+      const dy = mainCam.position.y - tgt.y;
+      const dz = mainCam.position.z - tgt.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+      if (syncMode === 'mirror') {
+        // 复制主视图的姿态（包含旋转），让三视图在旋转时也变化
+        const pos = mainCam.position;
+        frontCam.setPosition(pos.x, pos.y, pos.z).setTarget(tgt.x, tgt.y, tgt.z);
+        topCam.setPosition(pos.x, pos.y, pos.z).setTarget(tgt.x, tgt.y, tgt.z);
+        leftCam.setPosition(pos.x, pos.y, pos.z).setTarget(tgt.x, tgt.y, tgt.z);
+      } else {
+        // 轴向工程视图：方向固定，仅同步目标与缩放
+        frontCam.setPosition(tgt.x, tgt.y, tgt.z + dist).setTarget(tgt.x, tgt.y, tgt.z);
+        topCam.setPosition(tgt.x, tgt.y + dist, tgt.z).setTarget(tgt.x, tgt.y, tgt.z);
+        leftCam.setPosition(tgt.x - dist, tgt.y, tgt.z).setTarget(tgt.x, tgt.y, tgt.z);
+      }
+
+      const updateOrtho = (cam, canvas) => {
+        const aspect = canvas.clientWidth / canvas.clientHeight || 1;
+        const size = dist;
+        cam.setOrthographicParams(-size * aspect, size * aspect, size, -size);
+      };
+      updateOrtho(frontCam, frontCanvas);
+      updateOrtho(topCam, topCanvas);
+      updateOrtho(leftCam, leftCanvas);
+    }
+
+    const engine = new iEngine.Engine();
+    engine.setAnimationLoop(() => {
+      syncOtherCams();
+      frontView.render(); topView.render(); leftView.render(); mainView.render();
+    });
+
+    window.addEventListener('resize', () => {
+      frontRenderer.resize(); topRenderer.resize(); leftRenderer.resize(); mainRenderer.resize();
+      syncOtherCams();
+    });
+
+    // 立即同步：在主视图交互事件发生时也触发同步，视觉更及时
+    ['mousedown','mousemove','mouseup','wheel'].forEach(evt => {
+      mainCanvas.addEventListener(evt, () => syncOtherCams(), { passive: true });
+    });
+
+    // 键盘切换同步模式：M=镜像，A=轴向
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'm') syncMode = 'mirror';
+      if (e.key.toLowerCase() === 'a') syncMode = 'axis';
+    });
+
+    // 为每个场景创建独立的模型实例，避免一个节点被多个场景“搬家”
+    const [triF, cubeF] = createSceneContent();
+    frontScene.addEntity(triF);
+    frontScene.addEntity(cubeF);
+
+    const [triT, cubeT] = createSceneContent();
+    topScene.addEntity(triT);
+    topScene.addEntity(cubeT);
+
+    const [triL, cubeL] = createSceneContent();
+    leftScene.addEntity(triL);
+    leftScene.addEntity(cubeL);
+
+    const [triM, cubeM] = createSceneContent();
+    mainScene.addEntity(triM);
+    mainScene.addEntity(cubeM);
+  </script>
+</body>
+</html>

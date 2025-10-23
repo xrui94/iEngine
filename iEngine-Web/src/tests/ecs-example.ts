@@ -4,15 +4,15 @@ import { Scene } from '../scenes/Scene';
 import { Node } from '../core/Node';
 import { RenderableComponent } from '../renderers/RenderableComponent';
 import { LightComponent } from '../lights/LightComponent';
-import { RenderSystem } from '../renderers/RenderSystem';
+// import { RenderSystem } from '../renderers/RenderSystem';
 
-// 创建引擎
-const engine = new Engine({
-    renderer: 'webgl'
-});
+// // 创建引擎
+// const engine = new Engine({
+//     renderer: 'webgl'
+// });
 
-// 启动引擎
-engine.start();
+// // 启动引擎
+// engine.start();
 
 // 创建场景
 // const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -44,10 +44,6 @@ engine.start();
 
 // // 将实体添加到场景
 // // scene.addEntity(entity);
-
-// // 获取渲染系统并设置场景
-// const renderSystem = engine.getRenderSystem();
-// // renderSystem.setScene(scene);
 
 // // 动画循环
 // engine.setAnimationLoop(() => {
